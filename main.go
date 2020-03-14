@@ -1,16 +1,26 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
+	"net/http"
+
+	"github.com/go-redis/redis"
+	"github.com/gorilla/mux"
+	"github.com/rs/cors"
+	"github.com/skip2/go-qrcode"
 )
+
+var redisClient *redis.Client
 
 func generateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 	privkey, err := rsa.GenerateKey(rand.Reader, bits)
@@ -79,36 +89,42 @@ func parsePemToPublicKey(filename string) *rsa.PublicKey {
 	return pubkey.(*rsa.PublicKey)
 }
 
+func viewQrCodeHandler(w http.ResponseWriter, r *http.Request) {
+	content, err := redisClient.Get("date-20200314").Result()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	qrCode, err := qrcode.Encode(content, qrcode.Medium, 256)
+	if err != nil {
+		fmt.Fprintf(w, "Unable to generate qr code: %s", err)
+	}
+	img, _, _ := image.Decode(bytes.NewBuffer(qrCode))
+
+	png.Encode(w, img)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.RequestURI)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
-	privkey, _ := generateKeyPair(1024)
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 
-	// encodePublicKeyPem(os.Stdout, &privkey.PublicKey)
-	// encodePrivateKeyPem(os.Stdout, privkey)
-
-	pubkeyPEM, _ := os.Create("pubkey.pem")
-	encodePublicKeyPem(pubkeyPEM, &privkey.PublicKey)
-
-	privkeyPEM, _ := os.Create("privkey.pem")
-	encodePrivateKeyPem(privkeyPEM, privkey)
-
-	// pubkey := parsePemToPublicKey("pubkey.pem")
-	// privkey := parsePemToPrivateKey("privkey.pem")
-
-	message := []byte("#333333")
-
-	ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, &privkey.PublicKey, message)
+	err := redisClient.Set("date-20200314", "#333333", 0).Err()
 	if err != nil {
-		log.Fatalf("Error from encryption: %s\n", err)
-		return
+		log.Fatalln(err.Error())
 	}
 
-	fmt.Printf("Ciphertext: %x\n", ciphertext)
-
-	plaintext, err := rsa.DecryptPKCS1v15(rand.Reader, privkey, ciphertext)
-	if err != nil {
-		log.Fatalf("Error from decryption: %s\n", err)
-		return
-	}
-
-	fmt.Printf("Plaintext: %s\n", string(plaintext))
+	router := mux.NewRouter()
+	router.HandleFunc("/qr", viewQrCodeHandler)
+	router.Use(loggingMiddleware)
+	log.Fatal(http.ListenAndServe(":6080", cors.Default().Handler(router)))
 }
