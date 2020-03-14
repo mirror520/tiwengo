@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"image"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/rs/cors"
 	"github.com/skip2/go-qrcode"
 )
@@ -54,17 +56,17 @@ func encodePublicKeyPem(out io.Writer, key *rsa.PublicKey) {
 func parsePemToPrivateKey(filename string) *rsa.PrivateKey {
 	priv, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatalln("Unable to open private key pem")
+		log.Fatalln("無法開啟私鑰PEM檔")
 	}
 
 	privPem, _ := pem.Decode(priv)
 	if privPem.Type != "RSA PRIVATE KEY" {
-		log.Fatalln("RSA private key is of the wrong type")
+		log.Fatalln("RSA私鑰是錯誤的型態")
 	}
 
 	privKey, err := x509.ParsePKCS1PrivateKey(privPem.Bytes)
 	if err != nil {
-		log.Fatalln("Unable to parse RSA private key")
+		log.Fatalln("無法剖析RSA私鑰")
 	}
 
 	return privKey
@@ -73,31 +75,64 @@ func parsePemToPrivateKey(filename string) *rsa.PrivateKey {
 func parsePemToPublicKey(filename string) *rsa.PublicKey {
 	pub, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln("無法開啟公鑰PEM檔")
 	}
 
 	pubPem, _ := pem.Decode(pub)
 	if pubPem.Type != "PUBLIC KEY" {
-		log.Fatalln("RSA public key is of the wrong type")
+		log.Fatalln("RSA公鑰是錯誤的型態")
 	}
 
 	pubkey, err := x509.ParsePKIXPublicKey(pubPem.Bytes)
 	if err != nil {
-		log.Fatalln("Unable to parse RSA public key")
+		log.Fatalln("無法剖析RSA公鑰")
 	}
 
 	return pubkey.(*rsa.PublicKey)
 }
 
-func viewQrCodeHandler(w http.ResponseWriter, r *http.Request) {
-	content, err := redisClient.Get("date-20200314").Result()
+func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
+	date := mux.Vars(r)["date"]
+
+	privkey, _ := generateKeyPair(512)
+	privkeyPem := new(bytes.Buffer)
+
+	encodePrivateKeyPem(privkeyPem, privkey)
+
+	happyColor := colorful.HappyColor()
+	message := []byte(happyColor.Hex())
+	ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, &privkey.PublicKey, message)
+	if err != nil {
+		log.Fatalf("加密時發生錯誤: %s\n", err)
+		return
+	}
+
+	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
+	fmt.Fprintf(w, "Base64封裝後密文: %s\n", encodedCiphertext)
+
+	err = redisClient.HSet("date-"+date, map[string]interface{}{
+		"privkey":    privkeyPem.String(),
+		"ciphertext": encodedCiphertext,
+	}).Err()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
-	qrCode, err := qrcode.Encode(content, qrcode.Medium, 256)
+	fmt.Fprintf(w, "成功加入%s的私鑰至Redis資料庫", date)
+}
+
+func showPrivkeyQrCodeHandler(w http.ResponseWriter, r *http.Request) {
+	date := mux.Vars(r)["date"]
+	dateKey := fmt.Sprintf("date-%s", date)
+
+	content, err := redisClient.HGet(dateKey, "privkey").Result()
 	if err != nil {
-		fmt.Fprintf(w, "Unable to generate qr code: %s", err)
+		log.Fatalln(err.Error())
+	}
+
+	qrCode, err := qrcode.Encode(content, qrcode.Medium, 600)
+	if err != nil {
+		fmt.Fprintf(w, "無法產生QR Code: %s", err)
 	}
 	img, _, _ := image.Decode(bytes.NewBuffer(qrCode))
 
@@ -118,13 +153,9 @@ func main() {
 		DB:       0,
 	})
 
-	err := redisClient.Set("date-20200314", "#333333", 0).Err()
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-
 	router := mux.NewRouter()
-	router.HandleFunc("/qr", viewQrCodeHandler)
+	router.HandleFunc("/privkey/{date}", createPrivkeyHandler).Methods("POST")
+	router.HandleFunc("/privkey/{date}/qr", showPrivkeyQrCodeHandler).Methods("GET")
 	router.Use(loggingMiddleware)
 	log.Fatal(http.ListenAndServe(":6080", cors.Default().Handler(router)))
 }
