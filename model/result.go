@@ -18,10 +18,10 @@ const (
 
 // Result ...
 type Result struct {
-	Status ResultStatus
-	Info   []string
-	Data   string
-	Time   time.Time
+	Status ResultStatus `json:"status"`
+	Info   []string     `json:"info"`
+	Data   string       `json:"data"`
+	Time   time.Time    `json:"time"`
 }
 
 // New ...
