@@ -18,6 +18,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/lucasb-eyer/go-colorful"
+	"github.com/mirror520/tiwengo/model"
 	"github.com/rs/cors"
 	"github.com/skip2/go-qrcode"
 )
@@ -91,9 +92,7 @@ func parsePemToPublicKey(filename string) *rsa.PublicKey {
 	return pubkey.(*rsa.PublicKey)
 }
 
-func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
-	date := mux.Vars(r)["date"]
-
+func createAndUpdatePrivkey(w io.Writer, dateKey string) error {
 	privkey, _ := generateKeyPair(512)
 	privkeyPem := new(bytes.Buffer)
 
@@ -103,40 +102,107 @@ func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
 	message := []byte(happyColor.Hex())
 	ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, &privkey.PublicKey, message)
 	if err != nil {
-		log.Fatalf("加密時發生錯誤: %s\n", err)
-		return
+		fmt.Fprintf(w, "加密時發生錯誤: %s\n", err.Error())
+		return err
 	}
 
 	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
-	fmt.Fprintf(w, "Base64封裝後密文: %s\n", encodedCiphertext)
+	fmt.Fprintf(w, "Base64封裝後密文:\n %s\n", encodedCiphertext)
 
-	err = redisClient.HSet("date-"+date, map[string]interface{}{
+	err = redisClient.HSet(dateKey, map[string]interface{}{
 		"privkey":    privkeyPem.String(),
 		"ciphertext": encodedCiphertext,
 	}).Err()
 	if err != nil {
-		log.Fatalln(err.Error())
+		fmt.Fprintf(w, "將新的私鑰加入Redis資料庫時發生錯誤: %s\n", err.Error())
+		return err
 	}
 
-	fmt.Fprintf(w, "成功加入%s的私鑰至Redis資料庫", date)
+	return nil
+}
+
+func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
+	date := mux.Vars(r)["date"]
+	dateKey := fmt.Sprintf("date-%s", date)
+
+	result, _ := redisClient.Exists(dateKey).Result()
+	if result == 1 {
+		fmt.Fprintf(w, "Date: %s 的私鑰已經產生過了", dateKey)
+		return
+	}
+
+	if err := createAndUpdatePrivkey(w, dateKey); err != nil {
+		fmt.Fprintf(w, "新增金鑰失敗: %s\n", err.Error())
+		return
+	}
+	fmt.Fprintf(w, "成功產生%s的私鑰，並成功加入至Redis資料庫", date)
+}
+
+func updatePrivkeyHandler(w http.ResponseWriter, r *http.Request) {
+	date := mux.Vars(r)["date"]
+	dateKey := fmt.Sprintf("date-%s", date)
+
+	result, _ := redisClient.Exists(dateKey).Result()
+	if result == 0 {
+		fmt.Fprintf(w, "Date: %s 的私鑰不存在", dateKey)
+		return
+	}
+	if err := createAndUpdatePrivkey(w, dateKey); err != nil {
+		fmt.Fprintf(w, "更新金鑰失敗: %s\n", err.Error())
+		return
+	}
+	fmt.Fprintf(w, "成功更新%s的私鑰，及更新至Redis資料庫", date)
 }
 
 func showPrivkeyQrCodeHandler(w http.ResponseWriter, r *http.Request) {
 	date := mux.Vars(r)["date"]
 	dateKey := fmt.Sprintf("date-%s", date)
 
-	content, err := redisClient.HGet(dateKey, "privkey").Result()
+	privkey, err := redisClient.HGet(dateKey, "privkey").Result()
 	if err != nil {
+		fmt.Fprintf(w, "無法取得私鑰: %s\n", err.Error())
 		log.Fatalln(err.Error())
 	}
 
-	qrCode, err := qrcode.Encode(content, qrcode.Medium, 600)
+	qrCode, err := qrcode.Encode(privkey, qrcode.Medium, 600)
 	if err != nil {
 		fmt.Fprintf(w, "無法產生QR Code: %s", err)
 	}
 	img, _, _ := image.Decode(bytes.NewBuffer(qrCode))
 
 	png.Encode(w, img)
+}
+
+func showPrivkeyCiphertextHandler(w http.ResponseWriter, r *http.Request) {
+	var result *model.Result
+	w.Header().Set("Content-Type", "application/json")
+
+	date := mux.Vars(r)["date"]
+	dateKey := fmt.Sprintf("date-%s", date)
+
+	ciphertext, err := redisClient.HGet(dateKey, "ciphertext").Result()
+	if err != nil {
+		result = model.NewFailureResult()
+		result.AddInfo(fmt.Sprintf("無法取得 %s 密文", date))
+
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else {
+		result = model.NewSuccessResult()
+		result.AddInfo(fmt.Sprintf("成功取得 %s 密文", date))
+		result.SetData(ciphertext)
+
+		w.WriteHeader(http.StatusOK)
+	}
+
+	w.Write(result.JSON())
+}
+
+func indexPrivkeysHandler(w http.ResponseWriter, r *http.Request) {
+	keys, _ := redisClient.Keys("date-*").Result()
+	for _, key := range keys {
+		val, _ := redisClient.HGet(key, "privkey").Result()
+		fmt.Fprintf(w, "Key: %s, Value: \n%s\n", key, val)
+	}
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
@@ -148,14 +214,17 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "",
 		DB:       0,
 	})
 
 	router := mux.NewRouter()
-	router.HandleFunc("/privkey/{date}", createPrivkeyHandler).Methods("POST")
-	router.HandleFunc("/privkey/{date}/qr", showPrivkeyQrCodeHandler).Methods("GET")
+	router.HandleFunc("/privkeys", indexPrivkeysHandler).Methods("GET")
+	router.HandleFunc("/privkeys/{date}", createPrivkeyHandler).Methods("POST")
+	router.HandleFunc("/privkeys/{date}", updatePrivkeyHandler).Methods("PUT", "PATCH")
+	router.HandleFunc("/privkeys/{date}/qr", showPrivkeyQrCodeHandler).Methods("GET")
+	router.HandleFunc("/privkeys/{date}/ciphertext", showPrivkeyCiphertextHandler).Methods("GET")
 	router.Use(loggingMiddleware)
 	log.Fatal(http.ListenAndServe(":6080", cors.Default().Handler(router)))
 }
