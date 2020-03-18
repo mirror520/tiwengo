@@ -15,11 +15,11 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
-	"github.com/gorilla/mux"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mirror520/tiwengo/model"
-	"github.com/rs/cors"
+	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -121,8 +121,10 @@ func createAndUpdatePrivkey(w io.Writer, dateKey string) error {
 	return nil
 }
 
-func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
-	dateStr := mux.Vars(r)["date"]
+func createPrivkeyHandler(c *gin.Context) {
+	w := c.Writer
+
+	dateStr := c.Param("date")
 	dateKey := fmt.Sprintf("date-%s", dateStr)
 
 	result, _ := redisClient.Exists(dateKey).Result()
@@ -138,8 +140,10 @@ func createPrivkeyHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "成功產生%s的私鑰，並成功加入至Redis資料庫", dateStr)
 }
 
-func updatePrivkeyHandler(w http.ResponseWriter, r *http.Request) {
-	dateStr := mux.Vars(r)["date"]
+func updatePrivkeyHandler(c *gin.Context) {
+	w := c.Writer
+
+	dateStr := c.Param("date")
 	dateKey := fmt.Sprintf("date-%s", dateStr)
 
 	result, _ := redisClient.Exists(dateKey).Result()
@@ -154,8 +158,10 @@ func updatePrivkeyHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "成功更新%s的私鑰，及更新至Redis資料庫", dateStr)
 }
 
-func showPrivkeyQrCodeHandler(w http.ResponseWriter, r *http.Request) {
-	dateStr := mux.Vars(r)["date"]
+func showPrivkeyQrCodeHandler(c *gin.Context) {
+	w := c.Writer
+
+	dateStr := c.Param("date")
 	dateKey := fmt.Sprintf("date-%s", dateStr)
 
 	privkey, err := redisClient.HGet(dateKey, "privkey").Result()
@@ -173,11 +179,13 @@ func showPrivkeyQrCodeHandler(w http.ResponseWriter, r *http.Request) {
 	png.Encode(w, img)
 }
 
-func showPrivkeyCiphertextHandler(w http.ResponseWriter, r *http.Request) {
+func showPrivkeyCiphertextHandler(c *gin.Context) {
+	w := c.Writer
+
 	var result *model.Result
 	w.Header().Set("Content-Type", "application/json")
 
-	dateStr := mux.Vars(r)["date"]
+	dateStr := c.Param("date")
 	dateKey := fmt.Sprintf("date-%s", dateStr)
 
 	ciphertext, err := redisClient.HGet(dateKey, "ciphertext").Result()
@@ -197,7 +205,9 @@ func showPrivkeyCiphertextHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(result.JSON())
 }
 
-func indexPrivkeysHandler(w http.ResponseWriter, r *http.Request) {
+func indexPrivkeysHandler(c *gin.Context) {
+	w := c.Writer
+
 	keys, _ := redisClient.Keys("date-*").Result()
 	for _, key := range keys {
 		fmt.Fprintf(w, "Key: %s:, Value: \n", key)
@@ -224,12 +234,21 @@ func main() {
 		DB:       0,
 	})
 
-	router := mux.NewRouter()
-	router.HandleFunc("/privkeys", indexPrivkeysHandler).Methods("GET")
-	router.HandleFunc("/privkeys/{date}", createPrivkeyHandler).Methods("POST")
-	router.HandleFunc("/privkeys/{date}", updatePrivkeyHandler).Methods("PUT", "PATCH")
-	router.HandleFunc("/privkeys/{date}/qr", showPrivkeyQrCodeHandler).Methods("GET")
-	router.HandleFunc("/privkeys/{date}/ciphertext", showPrivkeyCiphertextHandler).Methods("GET")
-	router.Use(loggingMiddleware)
-	log.Fatal(http.ListenAndServe(":6080", cors.AllowAll().Handler(router)))
+	router := gin.Default()
+	router.Use(cors.AllowAll())
+
+	apiV1 := router.Group("/api/v1")
+	{
+		privkeys := apiV1.Group("/privkeys")
+		{
+			privkeys.GET("/", indexPrivkeysHandler)
+			privkeys.POST("/:date", createPrivkeyHandler)
+			privkeys.PUT("/:date", updatePrivkeyHandler)
+			privkeys.PATCH("/:date", updatePrivkeyHandler)
+			privkeys.GET("/:date/qr", showPrivkeyQrCodeHandler)
+			privkeys.GET("/:date/ciphertext", showPrivkeyCiphertextHandler)
+		}
+	}
+
+	router.Run(":6080")
 }
