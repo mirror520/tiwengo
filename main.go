@@ -229,7 +229,7 @@ func main() {
 	router.HandleFunc("/privkeys/{date}", createPrivkeyHandler).Methods("POST")
 	router.HandleFunc("/privkeys/{date}", updatePrivkeyHandler).Methods("PUT", "PATCH")
 	router.HandleFunc("/privkeys/{date}/qr", showPrivkeyQrCodeHandler).Methods("GET")
-	router.HandleFunc("/privkeys/{date}/ciphertext", showPrivkeyCiphertextHandler).Methods("GET", "OPTIONS")
+	router.HandleFunc("/privkeys/{date}/ciphertext", showPrivkeyCiphertextHandler).Methods("GET")
 	router.Use(loggingMiddleware)
 	log.Fatal(http.ListenAndServe(":6080", cors.AllowAll().Handler(router)))
 }
