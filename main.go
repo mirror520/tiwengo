@@ -17,10 +17,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
+	"github.com/jinzhu/gorm"
 	"github.com/lucasb-eyer/go-colorful"
+	"github.com/mirror520/tiwengo/database"
 	"github.com/mirror520/tiwengo/model"
 	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/skip2/go-qrcode"
+
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 var redisClient *redis.Client
@@ -220,19 +224,21 @@ func indexPrivkeysHandler(c *gin.Context) {
 	}
 }
 
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.RequestURI)
-		next.ServeHTTP(w, r)
-	})
-}
-
 func main() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     "redis:6379",
 		Password: "",
 		DB:       0,
 	})
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		panic("failed to connect database")
+	}
+	defer db.Close()
+
+	database.Migrate(db)
+	database.Seed(db)
 
 	router := gin.Default()
 	router.Use(cors.AllowAll())
