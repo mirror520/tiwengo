@@ -33,7 +33,7 @@ func SetRoute(router *gin.Engine) {
 		{
 			// guests.GET("/")                        // ListAllGuestsHandler
 			guests.POST("/register", controller.RegisterGuestUserHandler)
-			guests.POST("/register/phone/otp", controller.SendGuestPhoneOTPHandler)
+			guests.PATCH("/register/phone/otp", controller.SendGuestPhoneOTPHandler)
 			guests.PATCH("/register/phone/otp/verify", controller.VerifyGuestPhoneOTPHandler)
 			// guests.POST("/register/idcard/verify") // VerifyGuestIDCardHandler
 			// guests.PATCH("/login")                 // LoginGuestUserHandler

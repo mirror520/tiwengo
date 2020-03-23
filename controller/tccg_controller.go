@@ -18,8 +18,8 @@ const baseURL = "https://api.secret.taichung.gov.tw/v1.0/tccg/users"
 // LoginTccgUserHandler ...
 func LoginTccgUserHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
-		"controller": "TccgController",
-		"event":      "LoginTccgUserEvent",
+		"controller": "Tccg",
+		"event":      "LoginTccgUser",
 	})
 
 	var db *gorm.DB = model.DB

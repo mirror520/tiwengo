@@ -7,4 +7,5 @@ type Visit struct {
 	gorm.Model
 	GuestUserID          uint
 	DepartmentEmployeeID uint
+	LocationID           uint
 }

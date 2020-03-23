@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -53,18 +54,21 @@ func NewSMS() (*SMS, error) {
 }
 
 // SetOTP ...
-func (s *SMS) SetOTP(guest *model.Guest) string {
+func (s *SMS) SetOTP(guest *model.Guest) (string, string) {
 	subject := fmt.Sprintf("驗證訪客: %s, 行動電話: %s", guest.Name, guest.Phone)
 	otp, _ := getRandNum()
 	token := generateRandomString(30)
 	originMsg := fmt.Sprintf("驗證碼: %s ,再次登入: https://tccgov.tw?t=%s", otp, token)
 	limitMsg := string([]rune(originMsg)[0:shortSMSLen])
 
+	re := regexp.MustCompile(`^.*tw\?t=(?P<token>.*)`)
+	token = re.ReplaceAllString(limitMsg, `${token}`)
+
 	s.SB = subject
 	s.MSG = limitMsg
 	s.DEST = guest.Phone
 
-	return otp
+	return otp, token
 }
 
 // SendSMS ...

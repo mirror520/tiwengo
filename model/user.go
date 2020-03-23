@@ -5,7 +5,7 @@ type User struct {
 	Model
 	Username string   `json:"username" gorm:"unique;not null"`
 	Password string   `json:"password" gorm:"-"`
-	Name     string   `json:"name" gorm:"default:NULL"`
+	Name     string   `json:"name"`
 	Employee Employee `json:"employee" gorm:"foreignkey:UserID"`
 	Guest    Guest    `json:"guest" gorm:"foreignkey:UserID"`
 }
@@ -14,7 +14,7 @@ type User struct {
 type Employee struct {
 	UserID      uint         `json:"user_id" gorm:"primary_key;auto_increment:false"`
 	Name        string       `json:"name"`
-	Account     string       `json:"account" gorm:"unique;default:NULL" json:"account"`
+	Account     string       `json:"account" gorm:"unique" json:"account"`
 	Title       string       `json:"title"`
 	Departments []Department `json:"departments" gorm:"many2many:department_employees"`
 }
@@ -23,9 +23,11 @@ type Employee struct {
 type Guest struct {
 	UserID             uint                 `json:"user_id" gorm:"primary_key;auto_increment:false"`
 	Name               string               `json:"name"`
-	Phone              string               `json:"phone" gorm:"unique;default:NULL"`
+	Phone              string               `json:"phone" gorm:"unique"`
 	PhoneVerify        bool                 `json:"phone_verify" gorm:"default:false"`
-	IDCard             string               `json:"idcard" gorm:"unique;default:NULL"`
+	PhoneToken         string               `json:"phone_token"`
+	PhoneOTP           string               `json:"phone_otp" gorm:"-"`
+	IDCard             string               `json:"idcard" gorm:"unique"`
 	IDCardVerify       bool                 `json:"idcard_verify" gorm:"default:false"`
 	VisitedDepartments []DepartmentEmployee `json:"visited_departments" gorm:"many2many:visits"`
 }
