@@ -1,31 +1,79 @@
 package model
 
-import "github.com/jinzhu/gorm"
-
 // User ...
 type User struct {
-	gorm.Model
-	Username string   `gorm:"unique;not null"`
-	Password string   `gorm:"-"`
-	Name     string   `gorm:"default:NULL"`
-	Employee Employee `gorm:"foreignkey:UserID"`
-	Guest    Guest    `gorm:"foreignkey:UserID"`
+	Model
+	Username string   `json:"username" gorm:"unique;not null"`
+	Password string   `json:"password" gorm:"-"`
+	Name     string   `json:"name" gorm:"default:NULL"`
+	Employee Employee `json:"employee" gorm:"foreignkey:UserID"`
+	Guest    Guest    `json:"guest" gorm:"foreignkey:UserID"`
 }
 
 // Employee ...
 type Employee struct {
-	UserID      uint         `gorm:"primary_key;auto_increment:false"`
-	Account     string       `gorm:"unique;default:NULL"`
-	Departments []Department `gorm:"many2many:department_employees"`
-	OU          string       `gorm:"-"`
+	UserID      uint         `json:"user_id" gorm:"primary_key;auto_increment:false"`
+	Name        string       `json:"name"`
+	Account     string       `json:"account" gorm:"unique;default:NULL" json:"account"`
+	Title       string       `json:"title"`
+	Departments []Department `json:"departments" gorm:"many2many:department_employees"`
 }
 
 // Guest ...
 type Guest struct {
-	UserID             uint                 `gorm:"primary_key;auto_increment:false"`
-	Phone              string               `gorm:"unique;default:NULL"`
-	PhoneVerify        bool                 `gorm:"default:false"`
-	IDCard             string               `gorm:"unique;default:NULL"`
-	IDCardVerify       bool                 `gorm:"default:false"`
-	VisitedDepartments []DepartmentEmployee `gorm:"many2many:visits"`
+	UserID             uint                 `json:"user_id" gorm:"primary_key;auto_increment:false"`
+	Name               string               `json:"name"`
+	Phone              string               `json:"phone" gorm:"unique;default:NULL"`
+	PhoneVerify        bool                 `json:"phone_verify" gorm:"default:false"`
+	IDCard             string               `json:"idcard" gorm:"unique;default:NULL"`
+	IDCardVerify       bool                 `json:"idcard_verify" gorm:"default:false"`
+	VisitedDepartments []DepartmentEmployee `json:"visited_departments" gorm:"many2many:visits"`
+}
+
+// TccgUser ...
+type TccgUser struct {
+	Account        string         `json:"account"`
+	Password       string         `json:"password"`
+	Name           string         `json:"name"`
+	Title          string         `json:"title"`
+	Enabled        bool           `json:"enabled"`
+	TccgDepartment TccgDepartment `json:"department"`
+}
+
+// TccgDepartment ...
+type TccgDepartment struct {
+	Department string `json:"department"`
+	OU         string `json:"ou"`
+}
+
+// User ...
+func (tccgUser *TccgUser) User() User {
+	user := User{
+		Username: tccgUser.Account,
+		Name:     tccgUser.Name,
+		Employee: Employee{
+			Account: tccgUser.Account,
+			Name:    tccgUser.Name,
+			Title:   tccgUser.Title,
+		},
+	}
+
+	return user
+}
+
+// User ...
+func (guest *Guest) User() User {
+	user := User{
+		Username: guest.Phone,
+		Name:     guest.Name,
+		Guest: Guest{
+			Name:         guest.Name,
+			Phone:        guest.Phone,
+			PhoneVerify:  false,
+			IDCard:       guest.IDCard,
+			IDCardVerify: false,
+		},
+	}
+
+	return user
 }

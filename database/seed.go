@@ -1,49 +1,12 @@
 package database
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/model"
 )
 
 // Seed ...
 func Seed(db *gorm.DB) {
-	var count int
-	db.Model(&model.User{}).Count(&count)
-
-	if count != 3 {
-		db.Create(&model.User{
-			Username: "0911111111",
-			Name:     "用手機驗證的訪客",
-			Guest: model.Guest{
-				Phone:       "0911111111",
-				PhoneVerify: true,
-			},
-		})
-
-		db.Create(&model.User{
-			Username: "employee",
-			Name:     "員工",
-			Employee: model.Employee{
-				Account: "employee",
-				OU:      "010003",
-			},
-		})
-
-		db.Create(&model.User{
-			Username: "0922222222",
-			Name:     "用身分證驗證的訪客",
-			Guest: model.Guest{
-				Phone:        "0922222222",
-				PhoneVerify:  false,
-				IDCard:       "L123850660",
-				IDCardVerify: true,
-			},
-		})
-	}
-
 	institutions := []model.Institution{
 		{
 			Institution: "秘書處",
@@ -87,44 +50,7 @@ func Seed(db *gorm.DB) {
 		},
 	}
 
-	if true {
-		for _, institution := range institutions {
-			db.FirstOrCreate(&institution)
-		}
+	for _, institution := range institutions {
+		db.FirstOrCreate(&institution)
 	}
-
-	var targetDepartment model.Department
-	db.Where("ou = ?", "010003").First(&targetDepartment)
-
-	var targetEmployee model.User
-	db.Set("gorm:auto_preload", true).Where("username = ?", "employee").First(&targetEmployee)
-
-	// departments := targetEmployee.Employee.Departments
-	// currentDepartment := departments[len(departments)-1]
-	var currentDepartmentEmployee model.DepartmentEmployee
-	db.Where("department_id = ? AND employee_user_id = ?", targetDepartment.ID, targetEmployee.ID).Last(&currentDepartmentEmployee)
-	if targetDepartment.ID != currentDepartmentEmployee.DepartmentID {
-		db.Create(&model.DepartmentEmployee{
-			DepartmentID:   targetDepartment.ID,
-			EmployeeUserID: targetEmployee.ID,
-		})
-	}
-	db.Where("department_id = ? AND employee_user_id = ?", targetDepartment.ID, targetEmployee.ID).Last(&currentDepartmentEmployee)
-
-	var targetGuest model.User
-	db.Set("gorm:auto_preload", true).Where("username = ?", "0911111111").First(&targetGuest)
-	// db.Model(&targetGuest.Guest).Association("VisitedDepartments").Append(currentDepartmentEmployee)
-	db.Create(&model.Visit{
-		GuestUserID:          targetGuest.ID,
-		DepartmentEmployeeID: currentDepartmentEmployee.ID,
-	})
-
-	db.Set("gorm:auto_preload", true).
-		Where("username = ?", "0911111111").
-		Preload("Guest.VisitedDepartments.Department").
-		Preload("Guest.VisitedDepartments.Employee").
-		First(&targetGuest)
-
-	b, _ := json.MarshalIndent(targetGuest, "", " ")
-	fmt.Printf("%s", b)
 }

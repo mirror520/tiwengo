@@ -3,6 +3,8 @@ package model
 import (
 	"encoding/json"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // ResultStatus ...
@@ -20,8 +22,9 @@ const (
 type Result struct {
 	Status ResultStatus `json:"status"`
 	Info   []string     `json:"info"`
-	Data   string       `json:"data"`
+	Data   interface{}  `json:"data"`
 	Time   time.Time    `json:"time"`
+	Logger *log.Entry   `json:"-"`
 }
 
 // New ...
@@ -29,7 +32,7 @@ func New(status ResultStatus) *Result {
 	return &Result{
 		Status: status,
 		Info:   nil,
-		Data:   "",
+		Data:   nil,
 		Time:   time.Now(),
 	}
 }
@@ -45,13 +48,27 @@ func NewFailureResult() *Result {
 }
 
 // SetData ...
-func (r *Result) SetData(data string) {
+func (r *Result) SetData(data interface{}) {
 	r.Data = data
 }
 
 // AddInfo ...
 func (r *Result) AddInfo(info string) {
 	r.Info = append(r.Info, info)
+
+	if r.Logger != nil {
+		if r.Status == Success {
+			r.Logger.Infoln(info)
+		} else {
+			r.Logger.Errorln(info)
+		}
+	}
+}
+
+// SetLogger ...
+func (r *Result) SetLogger(logger *log.Entry) *Result {
+	r.Logger = logger
+	return r
 }
 
 // JSON ...

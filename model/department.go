@@ -1,28 +1,26 @@
 package model
 
-import "github.com/jinzhu/gorm"
-
 // Department ...
 type Department struct {
-	gorm.Model
-	Department    string
-	OU            string `gorm:"unique"`
-	InstitutionID uint
+	Model
+	Department    string `json:"department"`
+	OU            string `json:"ou" gorm:"unique"`
+	InstitutionID uint   `json:"-"`
 }
 
 // Institution ...
 type Institution struct {
-	gorm.Model
-	Institution string
-	OU          string       `gorm:"unique"`
-	Departments []Department `gorm:"foreignkey:InstitutionID"`
+	Model
+	Institution string       `json:"institution"`
+	OU          string       `json:"ou" gorm:"unique"`
+	Departments []Department `json:"departments" gorm:"foreignkey:InstitutionID"`
 }
 
 // DepartmentEmployee ...
 type DepartmentEmployee struct {
-	gorm.Model
-	EmployeeUserID uint
-	DepartmentID   uint
-	Department     Department
-	Employee       User `gorm:"foreignkey:EmployeeUserID"`
+	Model
+	EmployeeUserID uint       `json:"-"`
+	DepartmentID   uint       `json:"-"`
+	Department     Department `json:"department"`
+	Employee       User       `json:"employee" gorm:"foreignkey:EmployeeUserID"`
 }
