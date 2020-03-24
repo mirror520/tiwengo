@@ -99,7 +99,9 @@ func login(user *model.TccgUser) (*model.TccgUser, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("使用者登入 API 發生錯誤")
+		var result model.Result
+		json.NewDecoder(resp.Body).Decode(&result)
+		return nil, errors.New(result.Info[0])
 	}
 
 	user = &model.TccgUser{}

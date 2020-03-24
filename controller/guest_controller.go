@@ -2,7 +2,9 @@ package controller
 
 import (
 	"fmt"
+	"image/png"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +16,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// RegisterGuestUserHandler ...
-func RegisterGuestUserHandler(ctx *gin.Context) {
+// LoginGuestUserHandler ...
+func LoginGuestUserHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Guest",
-		"event":      "RegisterGuestUser",
+		"event":      "LoginGuestUser",
 	})
 
 	var db *gorm.DB = model.DB
@@ -36,6 +38,79 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
+	if (input.Phone == "") || (user.Guest.Phone != input.Phone) ||
+		(user.Guest.PhoneToken != input.PhoneToken) {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("訪客驗證資料錯誤")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+	logger = logger.WithFields(log.Fields{"user_id": user.ID})
+
+	if !user.Guest.PhoneVerify {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("您的手機尚未驗證通過，請重新驗證")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+
+	result = model.NewSuccessResult().SetLogger(logger)
+	result.AddInfo("訪客登入成功")
+	result.SetData(&user)
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+// ShowGuestUserQRCodeHandler ...
+func ShowGuestUserQRCodeHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Guest",
+		"event":      "ShowGuestUserQRCode",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	userID := ctx.Param("user_id")
+	logger = logger.WithFields(log.Fields{"user_id": userID})
+
+	var user model.User
+	db.Set("gorm:auto_preload", true).Where("id = ?", userID).First(&user)
+
+	img, err := getTodayGuestUserQRCode(user)
+	if err != nil {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("無法取得今天的 QR Code")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+
+	w := ctx.Writer
+	png.Encode(w, img)
+}
+
+// RegisterGuestUserHandler ...
+func RegisterGuestUserHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Guest",
+		"event":      "RegisterGuestUser",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	var input model.Guest
+	err := ctx.ShouldBind(&input)
+	if err != nil {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("您輸入的資料格式錯誤")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+	logger = logger.WithFields(log.Fields{"phone": input.Phone})
+
+	var user model.User
+	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
 	if user.Username == input.Phone {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您已經註冊過了")
@@ -46,7 +121,7 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 	db.Create(&user)
 
 	result = model.NewSuccessResult().SetLogger(logger)
-	result.AddInfo("訪客註冊成功")
+	result.AddInfo("您註冊成功了")
 	result.SetData(&user)
 
 	ctx.JSON(http.StatusOK, result)
@@ -67,7 +142,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	err := ctx.ShouldBind(&input)
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客輸入資料格式錯誤")
+		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -75,9 +150,9 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("id = ?", input.UserID).First(&user)
-	if user.Guest.Phone != input.Phone {
+	if (input.Phone == "") || (user.Guest.Phone != input.Phone) {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客驗證資料錯誤")
+		result.AddInfo("您輸入的資料不正確")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -85,7 +160,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	var guest model.Guest = user.Guest
 	if guest.PhoneVerify {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客前已完成驗證")
+		result.AddInfo("您之前已完成驗證")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -126,11 +201,21 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	guest.PhoneToken = token
 	db.Save(&guest)
 
-	smsResult, err := sms.SendSMS()
-	logger.WithFields(log.Fields{"credit": smsResult.Credit})
+	if os.Getenv("GIN_MODE") == "release" {
+		smsResult, err := sms.SendSMS()
+		if err != nil {
+			result = model.NewFailureResult().SetLogger(logger)
+			result.AddInfo("寄送 SMS OTP 失敗")
+			result.AddInfo(err.Error())
+			ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+			return
+		}
+		logger.WithFields(log.Fields{"credit": smsResult.Credit})
+	}
 
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("SMS OTP 發送成功")
+	result.SetData(guest)
 
 	ctx.JSON(http.StatusOK, result)
 }
@@ -150,7 +235,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	err := ctx.ShouldBind(&input)
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客輸入資料格式錯誤")
+		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -158,9 +243,9 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("id = ?", input.UserID).First(&user)
-	if user.Guest.Phone != input.Phone {
+	if (input.Phone == "") || (user.Guest.Phone != input.Phone) {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客驗證資料錯誤")
+		result.AddInfo("您輸入的資料不正確")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -168,7 +253,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	var guest model.Guest = user.Guest
 	if guest.PhoneVerify {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客前已完成驗證")
+		result.AddInfo("您之前已完成驗證")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -177,7 +262,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	otp, err := redisClient.Get(key).Result()
 	if (err != nil) || (otp != input.PhoneOTP) || (guest.PhoneToken != input.PhoneToken) {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("驗證碼不正確或已經失敗")
+		result.AddInfo("驗證碼不正確或已經失效")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
@@ -185,7 +270,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	db.Save(&guest)
 
 	result = model.NewSuccessResult().SetLogger(logger)
-	result.AddInfo("手機已通過驗證")
+	result.AddInfo("您的手機已通過驗證")
 	result.SetData(guest)
 
 	ctx.JSON(http.StatusOK, result)
