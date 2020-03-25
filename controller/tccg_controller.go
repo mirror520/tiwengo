@@ -25,7 +25,7 @@ func LoginTccgUserHandler(ctx *gin.Context) {
 	var db *gorm.DB = model.DB
 	var result *model.Result
 
-	var input *model.TccgUser
+	var input model.TccgUser
 	err := ctx.ShouldBind(&input)
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
@@ -35,7 +35,7 @@ func LoginTccgUserHandler(ctx *gin.Context) {
 	}
 	logger = logger.WithFields(log.Fields{"account": input.Account})
 
-	tccgUser, err := login(input)
+	tccgUser, err := login(&input)
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo(err.Error())
@@ -70,10 +70,10 @@ func LoginTccgUserHandler(ctx *gin.Context) {
 			DepartmentID:   targetDepartment.ID,
 			EmployeeUserID: user.ID,
 		})
+		logger.Infoln("使用者變更所屬單位，加入使用者新的單位")
 
-		logger.Infoln("使用者變更所屬單位，加入使用者所屬單位")
+		db.Set("gorm:auto_preload", true).Where("id = ?", user.ID).First(&user)
 	}
-	db.Set("gorm:auto_preload", true).Where("id = ?", user.ID).First(&user)
 
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("使用者登入成功")

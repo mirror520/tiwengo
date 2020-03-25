@@ -38,8 +38,7 @@ func LoginGuestUserHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
-	if (input.Phone == "") || (user.Guest.Phone != input.Phone) ||
-		(user.Guest.PhoneToken != input.PhoneToken) {
+	if (user.Username != input.Phone) || (user.Guest.PhoneToken != input.PhoneToken) {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("訪客驗證資料錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -113,8 +112,13 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
 	if user.Username == input.Phone {
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("您已經註冊過了")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		if user.Guest.PhoneVerify {
+			result.AddInfo("您的電話已經驗證過了")
+			ctx.AbortWithStatusJSON(http.StatusConflict, result)
+		} else {
+			result.AddInfo("您需要驗證電話")
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, result)
+		}
 		return
 	}
 	user = input.User()
@@ -150,7 +154,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("id = ?", input.UserID).First(&user)
-	if (input.Phone == "") || (user.Guest.Phone != input.Phone) {
+	if user.Username != input.Phone {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料不正確")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -243,7 +247,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("id = ?", input.UserID).First(&user)
-	if (input.Phone == "") || (user.Guest.Phone != input.Phone) {
+	if user.Username != input.Phone {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料不正確")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)

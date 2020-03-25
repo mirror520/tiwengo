@@ -3,7 +3,7 @@ package model
 // User ...
 type User struct {
 	Model
-	Username string   `json:"username" gorm:"unique;not null"`
+	Username string   `json:"username" gorm:"unique;not null" binding:"required"`
 	Password string   `json:"password" gorm:"-"`
 	Name     string   `json:"name"`
 	Employee Employee `json:"employee" gorm:"foreignkey:UserID"`
@@ -13,8 +13,8 @@ type User struct {
 // Employee ...
 type Employee struct {
 	UserID      uint         `json:"user_id" gorm:"primary_key;auto_increment:false"`
-	Account     string       `json:"account" gorm:"unique" json:"account"`
 	Name        string       `json:"name"`
+	Account     string       `json:"account" gorm:"unique"`
 	Title       string       `json:"title"`
 	Departments []Department `json:"departments" gorm:"many2many:department_employees"`
 }
@@ -23,7 +23,7 @@ type Employee struct {
 type Guest struct {
 	UserID             uint                 `json:"user_id" gorm:"primary_key;auto_increment:false"`
 	Name               string               `json:"name"`
-	Phone              string               `json:"phone" gorm:"unique"`
+	Phone              string               `json:"phone" gorm:"unique" binding:"required"`
 	PhoneVerify        bool                 `json:"phone_verify" gorm:"default:false"`
 	PhoneToken         string               `json:"phone_token"`
 	PhoneOTP           string               `json:"phone_otp" gorm:"-"`
@@ -34,8 +34,8 @@ type Guest struct {
 
 // TccgUser ...
 type TccgUser struct {
-	Account        string         `json:"account"`
-	Password       string         `json:"password"`
+	Account        string         `json:"account" binding:"required"`
+	Password       string         `json:"password" binding:"required"`
 	Name           string         `json:"name"`
 	Title          string         `json:"title"`
 	Enabled        bool           `json:"enabled"`

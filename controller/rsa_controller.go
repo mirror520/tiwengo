@@ -125,6 +125,7 @@ func createPrivkey(dateKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	redisClient.Expire(dateKey, 24*time.Hour)
 
 	return privkeyPem.String(), nil
 }
