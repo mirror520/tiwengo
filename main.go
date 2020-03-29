@@ -2,6 +2,8 @@ package main
 
 import (
 	jwt "github.com/appleboy/gin-jwt/v2"
+	casbin "github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
 	"github.com/jinzhu/gorm"
@@ -38,6 +40,12 @@ func main() {
 
 	database.Migrate(model.DB)
 	database.Seed(model.DB)
+
+	adapter, _ := gormadapter.NewAdapterByDB(model.DB)
+	enforcer, _ := casbin.NewEnforcer("keymatch_model.conf", adapter)
+	enforcer.LoadPolicy()
+
+	model.Enforcer = enforcer
 
 	router := gin.Default()
 	authMiddleware, err := jwt.New(middleware.AuthMiddleware())

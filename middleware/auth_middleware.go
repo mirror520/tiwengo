@@ -23,7 +23,7 @@ var (
 func AuthMiddleware() *jwt.GinJWTMiddleware {
 	logger := log.WithFields(log.Fields{"middleware": "Auth"})
 	identityKey := "username"
-	db := model.DB
+	enforcer := model.Enforcer
 
 	return &jwt.GinJWTMiddleware{
 		Realm:       baseURL,
@@ -43,9 +43,7 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 			claims := jwt.ExtractClaims(ctx)
 			username := claims[identityKey].(string)
 
-			var user model.User
-			db.Set("gorm:auto_preload", true).Where("username = ?", username).First(&user)
-			return &user
+			return username
 		},
 		Authenticator: func(ctx *gin.Context) (interface{}, error) {
 			var loginVals model.User
@@ -83,8 +81,17 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 			return nil, jwt.ErrFailedAuthentication
 		},
 		Authorizator: func(data interface{}, ctx *gin.Context) bool {
-			if v, ok := data.(*model.User); ok && v.Username == "admin" {
-				return true
+			logger = logger.WithFields(log.Fields{"event": "Authorizator"})
+
+			if val, ok := data.(string); ok {
+				logger = logger.WithFields(log.Fields{"username": val})
+
+				result, err := enforcer.Enforce(val, ctx.Request.URL.Path, ctx.Request.Method)
+				if err != nil {
+					logger.Errorln(err.Error())
+				}
+
+				return result
 			}
 
 			return false
@@ -93,8 +100,8 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 			logger = logger.WithFields(log.Fields{"event": "Unauthorized"})
 
 			value, ok := ctx.Get("username")
-			username := value.(string)
 			if ok {
+				username := value.(string)
 				logger = logger.WithFields(log.Fields{"username": username})
 			}
 

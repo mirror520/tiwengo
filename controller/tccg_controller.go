@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/environment"
 	"github.com/mirror520/tiwengo/model"
@@ -24,6 +25,7 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 	})
 
 	var db *gorm.DB = model.DB
+	var enforcer *casbin.Enforcer = model.Enforcer
 
 	tccgUser, err := login(input)
 	if err != nil {
@@ -40,8 +42,10 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 	if user.Username != tccgUser.Account {
 		user = tccgUser.User()
 		db.Create(&user)
-
 		logger.Infoln("使用者第一次登入系統，建立使用者")
+
+		enforcer.AddNamedPolicy("p", user.Username, "/api/v1/privkeys/today", "GET")
+		logger.Infoln("新增使用者權限")
 	}
 
 	var targetDepartment model.Department

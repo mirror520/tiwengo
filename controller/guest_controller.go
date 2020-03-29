@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
 	"github.com/jinzhu/gorm"
@@ -208,6 +209,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	})
 
 	var db *gorm.DB = model.DB
+	var enforcer *casbin.Enforcer = model.Enforcer
 	var redisClient *redis.Client = model.RedisClient
 	var result *model.Result
 
@@ -241,6 +243,10 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	}
 	guest.PhoneVerify = true
 	db.Save(&guest)
+
+	authPath := fmt.Sprintf("/api/v1/guests/%d/qr", user.ID)
+	enforcer.AddNamedPolicy("p", user.Username, authPath, "GET")
+	logger.Infoln("新增訪客使用者權限")
 
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("您的手機已通過驗證")

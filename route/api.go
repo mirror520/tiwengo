@@ -13,7 +13,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 	{
 		privkeys := apiV1.Group("/privkeys")
 		{
-			privkeys.GET("/today", controller.GetPrivkeyHandler)
+			privkeys.GET("/today", authMiddleware.MiddlewareFunc(), controller.GetPrivkeyHandler)
 		}
 
 		users := apiV1.Group("/users")
@@ -23,8 +23,9 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 
 		guests := apiV1.Group("/guests")
 		{
+			guests.GET("/:user_id/qr", authMiddleware.MiddlewareFunc(), controller.ShowGuestUserQRCodeHandler)
+
 			guests.PATCH("/login", authMiddleware.LoginHandler)
-			guests.GET("/:user_id/qr", controller.ShowGuestUserQRCodeHandler)
 			guests.POST("/register", controller.RegisterGuestUserHandler)
 			guests.PATCH("/register/phone/otp", controller.SendGuestPhoneOTPHandler)
 			guests.PATCH("/register/phone/otp/verify", controller.VerifyGuestPhoneOTPHandler)
