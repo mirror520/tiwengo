@@ -9,15 +9,21 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/mirror520/tiwengo/environment"
 	"github.com/mirror520/tiwengo/model"
 )
 
-const baseURL = "https://oms.every8d.com/API21/HTTP"
+var (
+	shortURL    = environment.ShortURL
+	smsBaseURL  = environment.SMSBaseURL
+	smsUsername = environment.SMSUsername
+	smsPassword = environment.SMSPassword
+)
+
 const shortSMSLen = 70
 
 // SMS ...
@@ -40,13 +46,13 @@ type SMSResult struct {
 
 // NewSMS ...
 func NewSMS() (*SMS, error) {
-	if os.Getenv("SMS_UID") == "" || os.Getenv("SMS_PWD") == "" {
+	if smsUsername == "" || smsPassword == "" {
 		return nil, errors.New("未設定簡訊寄送帳號密碼")
 	}
 
 	return &SMS{
-		UID:  os.Getenv("SMS_UID"),
-		PWD:  os.Getenv("SMS_PWD"),
+		UID:  smsUsername,
+		PWD:  smsPassword,
 		SB:   "",
 		MSG:  "",
 		DEST: "",
@@ -58,10 +64,10 @@ func (s *SMS) SetOTP(guest *model.Guest) (string, string) {
 	subject := fmt.Sprintf("驗證訪客: %s, 行動電話: %s", guest.Name, guest.Phone)
 	otp, _ := getRandNum()
 	token := generateRandomString(30)
-	originMsg := fmt.Sprintf("驗證碼: %s ,再次登入: https://%s?t=%s", otp, os.Getenv("TIWENPASS_URL"), token)
+	originMsg := fmt.Sprintf("驗證碼: %s ,再次登入: %s?t=%s", otp, shortURL, token)
 	limitMsg := string([]rune(originMsg)[0:shortSMSLen])
 
-	re := regexp.MustCompile(`^.*tw\?t=(?P<token>.*)`)
+	re := regexp.MustCompile(`^.*\?t=(?P<token>.*)`)
 	token = re.ReplaceAllString(limitMsg, `${token}`)
 
 	s.SB = subject
@@ -75,7 +81,7 @@ func (s *SMS) SetOTP(guest *model.Guest) (string, string) {
 func (s *SMS) SendSMS() (*SMSResult, error) {
 	data := s.URLValues()
 
-	resp, err := http.PostForm(baseURL+"/sendSMS.ashx", data)
+	resp, err := http.PostForm(smsBaseURL+"/sendSMS.ashx", data)
 	if err != nil {
 		return nil, err
 	}

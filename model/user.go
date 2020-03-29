@@ -1,13 +1,26 @@
 package model
 
+// UserType ...
+type UserType int
+
+const (
+	// EmployeeUser ...
+	EmployeeUser UserType = iota
+
+	// GuestUser ...
+	GuestUser
+)
+
 // User ...
 type User struct {
 	Model
 	Username string   `json:"username" gorm:"unique;not null" binding:"required"`
 	Password string   `json:"password" gorm:"-"`
 	Name     string   `json:"name"`
+	Type     UserType `json:"type"`
 	Employee Employee `json:"employee" gorm:"foreignkey:UserID"`
 	Guest    Guest    `json:"guest" gorm:"foreignkey:UserID"`
+	Token    Token    `json:"token" gorm:"-"`
 }
 
 // Employee ...
@@ -23,7 +36,7 @@ type Employee struct {
 type Guest struct {
 	UserID             uint                 `json:"user_id" gorm:"primary_key;auto_increment:false"`
 	Name               string               `json:"name"`
-	Phone              string               `json:"phone" gorm:"unique" binding:"required"`
+	Phone              string               `json:"phone" gorm:"unique"`
 	PhoneVerify        bool                 `json:"phone_verify" gorm:"default:false"`
 	PhoneToken         string               `json:"phone_token"`
 	PhoneOTP           string               `json:"phone_otp" gorm:"-"`
@@ -53,6 +66,7 @@ func (tccgUser *TccgUser) User() User {
 	user := User{
 		Username: tccgUser.Account,
 		Name:     tccgUser.Name,
+		Type:     EmployeeUser,
 		Employee: Employee{
 			Account: tccgUser.Account,
 			Name:    tccgUser.Name,
@@ -68,6 +82,7 @@ func (guest *Guest) User() User {
 	user := User{
 		Username: guest.Phone,
 		Name:     guest.Name,
+		Type:     GuestUser,
 		Guest: Guest{
 			Name:         guest.Name,
 			Phone:        guest.Phone,

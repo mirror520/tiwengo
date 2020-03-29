@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"image/png"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v7"
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/model"
 	"github.com/mirror520/tiwengo/util"
@@ -17,47 +18,27 @@ import (
 )
 
 // LoginGuestUserHandler ...
-func LoginGuestUserHandler(ctx *gin.Context) {
+func LoginGuestUserHandler(input *model.Guest) (*model.User, error) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Guest",
 		"event":      "LoginGuestUser",
+		"username":   input.Phone,
 	})
 
 	var db *gorm.DB = model.DB
-	var result *model.Result
-
-	var input model.Guest
-	err := ctx.ShouldBind(&input)
-	if err != nil {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客輸入資料格式錯誤")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
-	}
-	logger = logger.WithFields(log.Fields{"phone": input.Phone})
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
 	if (user.Username != input.Phone) || (user.Guest.PhoneToken != input.PhoneToken) {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("訪客驗證資料錯誤")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
+		return nil, errors.New("訪客驗證資料錯誤")
 	}
-	logger = logger.WithFields(log.Fields{"user_id": user.ID})
 
 	if !user.Guest.PhoneVerify {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("您的手機尚未驗證通過，請重新驗證")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
+		return nil, errors.New("您的手機尚未驗證通過，請重新驗證")
 	}
+	logger.Infoln("訪客登入成功")
 
-	result = model.NewSuccessResult().SetLogger(logger)
-	result.AddInfo("訪客登入成功")
-	result.SetData(&user)
-
-	ctx.JSON(http.StatusOK, result)
+	return &user, nil
 }
 
 // ShowGuestUserQRCodeHandler ...
@@ -100,7 +81,7 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 
 	var input model.Guest
 	err := ctx.ShouldBind(&input)
-	if err != nil {
+	if (err != nil) || (input.Phone == "") {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -114,9 +95,11 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 		result = model.NewFailureResult().SetLogger(logger)
 		if user.Guest.PhoneVerify {
 			result.AddInfo("您的電話已經驗證過了")
+			result.SetData(user)
 			ctx.AbortWithStatusJSON(http.StatusConflict, result)
 		} else {
 			result.AddInfo("您需要驗證電話")
+			result.SetData(user)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, result)
 		}
 		return
@@ -144,7 +127,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var input model.Guest
 	err := ctx.ShouldBind(&input)
-	if err != nil {
+	if (err != nil) || (input.Phone == "") {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -162,13 +145,6 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	}
 
 	var guest model.Guest = user.Guest
-	if guest.PhoneVerify {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("您之前已完成驗證")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
-	}
-
 	sms, err := util.NewSMS()
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
@@ -237,7 +213,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var input model.Guest
 	err := ctx.ShouldBind(&input)
-	if err != nil {
+	if (err != nil) || (input.Phone == "") {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -255,13 +231,6 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	}
 
 	var guest model.Guest = user.Guest
-	if guest.PhoneVerify {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("您之前已完成驗證")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
-	}
-
 	key := fmt.Sprintf("otp-%s", guest.Phone)
 	otp, err := redisClient.Get(key).Result()
 	if (err != nil) || (otp != input.PhoneOTP) || (guest.PhoneToken != input.PhoneToken) {

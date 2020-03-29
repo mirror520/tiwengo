@@ -6,48 +6,32 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
+	"github.com/mirror520/tiwengo/environment"
 	"github.com/mirror520/tiwengo/model"
 
 	log "github.com/sirupsen/logrus"
 )
 
-const baseURL = "https://api.secret.taichung.gov.tw/v1.0/tccg/users"
+var tccgBaseURL = environment.TCCGBaseURL
 
 // LoginTccgUserHandler ...
-func LoginTccgUserHandler(ctx *gin.Context) {
+func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Tccg",
 		"event":      "LoginTccgUser",
+		"username":   input.Account,
 	})
 
 	var db *gorm.DB = model.DB
-	var result *model.Result
 
-	var input model.TccgUser
-	err := ctx.ShouldBind(&input)
+	tccgUser, err := login(input)
 	if err != nil {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("使用者輸入資料格式錯誤")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
-	}
-	logger = logger.WithFields(log.Fields{"account": input.Account})
-
-	tccgUser, err := login(&input)
-	if err != nil {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo(err.Error())
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
+		return nil, err
 	}
 
 	if !tccgUser.Enabled {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("不合法的使用者")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
+		return nil, errors.New("不合法的使用者")
 	}
 	logger.Infoln("成功取得使用者公務帳號資料")
 
@@ -74,19 +58,16 @@ func LoginTccgUserHandler(ctx *gin.Context) {
 
 		db.Set("gorm:auto_preload", true).Where("id = ?", user.ID).First(&user)
 	}
+	logger.Infoln("使用者登入成功")
 
-	result = model.NewSuccessResult().SetLogger(logger)
-	result.AddInfo("使用者登入成功")
-	result.SetData(&user)
-
-	ctx.JSON(http.StatusOK, result)
+	return &user, nil
 }
 
 func login(user *model.TccgUser) (*model.TccgUser, error) {
 	client := &http.Client{}
 	b, _ := json.Marshal(user)
 
-	req, err := http.NewRequest("PATCH", baseURL+"/login", bytes.NewBuffer(b))
+	req, err := http.NewRequest("PATCH", tccgBaseURL+"/login", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}

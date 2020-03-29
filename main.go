@@ -1,10 +1,12 @@
 package main
 
 import (
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v7"
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/database"
+	"github.com/mirror520/tiwengo/middleware"
 	"github.com/mirror520/tiwengo/model"
 	"github.com/mirror520/tiwengo/route"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -17,7 +19,8 @@ func main() {
 	var err error
 	model.DB, err = gorm.Open("sqlite3", "test.db")
 	if err != nil {
-		log.Fatal("Failed to connect database")
+		log.WithFields(log.Fields{"db": "sqlite3"}).
+			Fatalln("資料庫連結失敗")
 	}
 	defer model.DB.Close()
 
@@ -28,12 +31,18 @@ func main() {
 	})
 	defer model.RedisClient.Close()
 
+	if err := model.RedisClient.Ping().Err(); err != nil {
+		log.WithFields(log.Fields{"db": "redis"}).
+			Fatalln("Redis 資料庫連結失敗")
+	}
+
 	database.Migrate(model.DB)
 	database.Seed(model.DB)
 
 	router := gin.Default()
+	authMiddleware, err := jwt.New(middleware.AuthMiddleware())
 	router.Use(cors.AllowAll())
-	route.SetRoute(router)
+	route.SetRoute(router, authMiddleware)
 
 	router.Run(":6080")
 }
