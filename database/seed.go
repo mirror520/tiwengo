@@ -53,4 +53,20 @@ func Seed(db *gorm.DB) {
 	for _, institution := range institutions {
 		db.FirstOrCreate(&institution)
 	}
+
+	buildings := []model.Building{
+		{
+			Building: "臺灣大道市政大樓文心樓",
+			Locations: []model.Location{
+				{Location: "文心路"},
+				{Location: "文心川"},
+				{Location: "惠中路"},
+				{Location: "惠中川"},
+			},
+		},
+	}
+
+	for _, building := range buildings {
+		db.FirstOrCreate(&building)
+	}
 }

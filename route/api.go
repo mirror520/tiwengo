@@ -31,6 +31,12 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 			guests.PATCH("/register/phone/otp/verify", controller.VerifyGuestPhoneOTPHandler)
 		}
 
+		visits := apiV1.Group("/visits")
+		{
+			visits.PUT("/users/:user", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
+			visits.GET("/locations", authMiddleware.MiddlewareFunc(), controller.GetLocationsHandler)
+		}
+
 		auth := apiV1.Group("/auth")
 		{
 			auth.PATCH("/refresh_token", authMiddleware.RefreshHandler)

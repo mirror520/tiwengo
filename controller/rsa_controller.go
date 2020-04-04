@@ -105,7 +105,7 @@ func parsePemToPublicKey(pemStr string) (*rsa.PublicKey, error) {
 func createPrivkey(dateKey string) (string, error) {
 	redisClient := model.RedisClient
 
-	privkey, _ := generateKeyPair(2048)
+	privkey, _ := generateKeyPair(1024)
 	privkeyPem := new(bytes.Buffer)
 
 	encodePrivateKeyPem(privkeyPem, privkey)

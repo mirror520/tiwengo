@@ -10,6 +10,7 @@ func Migrate(db *gorm.DB) {
 	db.AutoMigrate(
 		&model.Visit{}, &model.DepartmentEmployee{},
 		&model.User{}, &model.Employee{}, &model.Guest{},
-		&model.Department{}, &model.Institution{}, &model.Location{},
+		&model.Department{}, &model.Institution{},
+		&model.Location{}, &model.Building{},
 	)
 }

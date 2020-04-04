@@ -28,7 +28,7 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 	return &jwt.GinJWTMiddleware{
 		Realm:       baseURL,
 		Key:         []byte(tokenSecret),
-		Timeout:     time.Hour,
+		Timeout:     30 * time.Minute,
 		MaxRefresh:  time.Hour,
 		IdentityKey: identityKey,
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
