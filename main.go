@@ -21,11 +21,12 @@ import (
 )
 
 func main() {
-	dbArgs := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4,utf8&parseTime=True&loc=Local",
+	dbArgs := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4,utf8&parseTime=True&loc=%s",
 		environment.DBUsername,
 		environment.DBPassword,
 		environment.DBHost,
 		environment.DBName,
+		"Asia%2FTaipei",
 	)
 
 	var err error
@@ -56,6 +57,7 @@ func main() {
 	enforcer.LoadPolicy()
 
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/privkeys/today", "GET")
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/", "GET")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/users/:username", "PUT")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/locations", "GET")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/guests/verify/:user_id/idcard", "PATCH")

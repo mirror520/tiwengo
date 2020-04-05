@@ -47,18 +47,12 @@ type Guest struct {
 
 // TccgUser ...
 type TccgUser struct {
-	Account        string         `json:"account" binding:"required"`
-	Password       string         `json:"password" binding:"required"`
-	Name           string         `json:"name"`
-	Title          string         `json:"title"`
-	Enabled        bool           `json:"enabled"`
-	TccgDepartment TccgDepartment `json:"department"`
-}
-
-// TccgDepartment ...
-type TccgDepartment struct {
-	Department string `json:"department"`
-	OU         string `json:"ou"`
+	Account  string `json:"account" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	Name     string `json:"name"`
+	Title    string `json:"title"`
+	Enabled  bool   `json:"enabled"`
+	OU       string `json:"ou"`
 }
 
 // User ...

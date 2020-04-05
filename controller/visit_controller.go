@@ -60,11 +60,18 @@ func UserVisitHandler(ctx *gin.Context) {
 		logger = logger.WithFields(log.Fields{"location": location.Location})
 	}
 
-	db.Create(&model.Visit{
+	visit := model.Visit{
 		GuestUserID:          guest.ID,
 		DepartmentEmployeeID: departmentEmployee.ID,
 		LocationID:           location.ID,
-	})
+	}
+	db.Create(&visit)
+	db.Where("id =?", visit.ID).
+		Preload("Guest").
+		Preload("DepartmentEmployee.Employee").
+		Preload("DepartmentEmployee.Department").
+		Preload("Location").
+		First(&visit)
 
 	var msg string
 	if location.ID == 0 {
@@ -74,6 +81,7 @@ func UserVisitHandler(ctx *gin.Context) {
 	}
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo(msg)
+	result.SetData(visit)
 
 	ctx.JSON(http.StatusOK, result)
 }
@@ -88,9 +96,33 @@ func GetLocationsHandler(ctx *gin.Context) {
 	var db *gorm.DB = model.DB
 
 	var locations []model.Location
-	db.Find(&locations)
+	db.Preload("Building").Find(&locations)
 
 	logger.Infoln("成功取得所有地點")
 
 	ctx.JSON(http.StatusOK, &locations)
+}
+
+// ListAllGuestVisitRecordHandler ...
+func ListAllGuestVisitRecordHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Visit",
+		"event":      "ListAllGuestVisitRecord",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	var visits []model.Visit
+	db.Preload("Guest").
+		Preload("DepartmentEmployee.Employee").
+		Preload("DepartmentEmployee.Department").
+		Preload("Location").
+		Find(&visits)
+
+	result = model.NewSuccessResult().SetLogger(logger)
+	result.AddInfo("成功取得所有拜訪紀錄")
+	result.SetData(visits)
+
+	ctx.JSON(http.StatusOK, result)
 }

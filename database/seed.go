@@ -56,12 +56,21 @@ func Seed(db *gorm.DB) {
 
 	buildings := []model.Building{
 		{
-			Building: "臺灣大道市政大樓文心樓",
+			Building: "文心樓",
 			Locations: []model.Location{
 				{Location: "文心路"},
-				{Location: "文心川"},
+				{Location: "川堂"},
+				{Location: "聯合治公區"},
 				{Location: "惠中路"},
 				{Location: "惠中川"},
+			},
+		},
+		{
+			Building: "惠中樓",
+			Locations: []model.Location{
+				{Location: "惠中路"},
+				{Location: "川堂"},
+				{Location: "餐廳"},
 			},
 		},
 	}

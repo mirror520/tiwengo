@@ -32,9 +32,9 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 		return nil, err
 	}
 
-	if !tccgUser.Enabled {
-		return nil, errors.New("不合法的使用者")
-	}
+	// if !tccgUser.Enabled {
+	// 	return nil, errors.New("不合法的使用者")
+	// }
 	logger.Infoln("成功取得使用者公務帳號資料")
 
 	var user model.User
@@ -49,7 +49,7 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 	}
 
 	var targetDepartment model.Department
-	db.Where("ou = ?", tccgUser.TccgDepartment.OU).First(&targetDepartment)
+	db.Where("ou = ?", tccgUser.OU).First(&targetDepartment)
 
 	var currentDepartmentEmployee model.DepartmentEmployee
 	db.Where("department_id = ? AND employee_user_id = ?", targetDepartment.ID, user.ID).Last(&currentDepartmentEmployee)

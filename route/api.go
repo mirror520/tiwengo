@@ -34,6 +34,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 
 		visits := apiV1.Group("/visits")
 		{
+			visits.GET("/", authMiddleware.MiddlewareFunc(), controller.ListAllGuestVisitRecordHandler)
 			visits.PUT("/users/:username", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
 			visits.GET("/locations", authMiddleware.MiddlewareFunc(), controller.GetLocationsHandler)
 		}
