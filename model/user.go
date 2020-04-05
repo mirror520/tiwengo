@@ -36,7 +36,7 @@ type Employee struct {
 type Guest struct {
 	UserID             uint                 `json:"user_id" gorm:"primary_key;auto_increment:false"`
 	Name               string               `json:"name"`
-	Phone              string               `json:"phone" gorm:"unique"`
+	Phone              string               `json:"phone"`
 	PhoneVerify        bool                 `json:"phone_verify" gorm:"default:false"`
 	PhoneToken         string               `json:"phone_token"`
 	PhoneOTP           string               `json:"phone_otp" gorm:"-"`
@@ -79,8 +79,15 @@ func (tccgUser *TccgUser) User() User {
 
 // User ...
 func (guest *Guest) User() User {
+	var username string
+	if guest.IDCard != "" {
+		username = guest.IDCard
+	} else {
+		username = guest.Phone
+	}
+
 	user := User{
-		Username: guest.Phone,
+		Username: username,
 		Name:     guest.Name,
 		Type:     GuestUser,
 		Guest: Guest{

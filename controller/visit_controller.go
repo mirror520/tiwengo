@@ -21,28 +21,31 @@ func UserVisitHandler(ctx *gin.Context) {
 	var db *gorm.DB = model.DB
 	var result *model.Result
 
-	guestID := ctx.Param("user")
+	guestUsername := ctx.Param("username")
 
 	var guest model.User
-	db.Set("gorm:auto_preload", true).Where("id = ?", guestID).First(&guest)
+	db.Set("gorm:auto_preload", true).Where("username = ?", guestUsername).First(&guest)
 	if guest.ID == 0 {
+		// 這裡應該要再做一次身分證驗證...，先依賴前端跳過
+
 		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("找不到訪客使用者")
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		result.AddInfo("您使用身分證驗證，第一次需要登錄資料")
+		result.SetData(guestUsername)
+		ctx.AbortWithStatusJSON(http.StatusConflict, result)
 		return
 	}
-	logger = logger.WithFields(log.Fields{"guest_user_id": guest.ID})
+	logger = logger.WithFields(log.Fields{"guest": guest.Username})
 
 	var employee model.User
-	username, ok := ctx.Get("username")
+	employeeUsername, ok := ctx.Get("username")
 	if !ok {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("找不到員工使用者")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
-	db.Set("gorm:auto_preload", true).Where("username = ?", username).First(&employee)
-	logger = logger.WithFields(log.Fields{"employee_user_id": employee.ID})
+	db.Set("gorm:auto_preload", true).Where("username = ?", employeeUsername).First(&employee)
+	logger = logger.WithFields(log.Fields{"employee": employee.Username})
 
 	departments := employee.Employee.Departments
 	department := departments[len(departments)-1]
@@ -54,7 +57,7 @@ func UserVisitHandler(ctx *gin.Context) {
 	ctx.ShouldBind(&input)
 	if input.ID != 0 {
 		db.Where("id = ?", input.ID).First(&location)
-		logger = logger.WithFields(log.Fields{"location_id": location.ID})
+		logger = logger.WithFields(log.Fields{"location": location.Location})
 	}
 
 	db.Create(&model.Visit{

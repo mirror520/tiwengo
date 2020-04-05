@@ -44,9 +44,7 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 		db.Create(&user)
 		logger.Infoln("使用者第一次登入系統，建立使用者")
 
-		enforcer.AddNamedPolicy("p", user.Username, "/api/v1/privkeys/today", "GET")
-		enforcer.AddNamedPolicy("p", user.Username, "/api/v1/visits/locations", "GET")
-		enforcer.AddNamedPolicy("p", user.Username, "/api/v1/visits/users/*", "PUT")
+		enforcer.AddRoleForUser(user.Username, "tccg_user")
 		logger.Infoln("新增使用者權限")
 	}
 

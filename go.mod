@@ -14,5 +14,5 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.5.0
 	github.com/skip2/go-qrcode v0.0.0-20191027152451-9434209cb086
-	golang.org/x/sys v0.0.0-20200327173247-9dae0f8f5775 // indirect
+	golang.org/x/sys v0.0.0-20200331124033-c3d80250170d // indirect
 )

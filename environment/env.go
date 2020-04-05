@@ -27,6 +27,9 @@ var (
 	// DBName ...
 	DBName = os.Getenv("DB_NAME")
 
+	// RedisHost ...
+	RedisHost = os.Getenv("REDIS_HOST")
+
 	// SMSBaseURL ...
 	SMSBaseURL = "https://oms.every8d.com/API21/HTTP"
 

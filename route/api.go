@@ -24,6 +24,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 		guests := apiV1.Group("/guests")
 		{
 			guests.GET("/:user_id/qr", authMiddleware.MiddlewareFunc(), controller.ShowGuestUserQRCodeHandler)
+			guests.PATCH("/verify/:user_id/idcard", authMiddleware.MiddlewareFunc(), controller.VerifyGuestUserIDCardHandler)
 
 			guests.PATCH("/login", authMiddleware.LoginHandler)
 			guests.POST("/register", controller.RegisterGuestUserHandler)
@@ -33,7 +34,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 
 		visits := apiV1.Group("/visits")
 		{
-			visits.PUT("/users/:user", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
+			visits.PUT("/users/:username", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
 			visits.GET("/locations", authMiddleware.MiddlewareFunc(), controller.GetLocationsHandler)
 		}
 

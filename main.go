@@ -37,7 +37,7 @@ func main() {
 	defer model.DB.Close()
 
 	model.RedisClient = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("redis:6379"),
+		Addr:     fmt.Sprintf("%s:6379", environment.RedisHost),
 		Password: "",
 		DB:       0,
 	})
@@ -54,6 +54,11 @@ func main() {
 	adapter, _ := gormadapter.NewAdapterByDB(model.DB)
 	enforcer, _ := casbin.NewEnforcer("keymatch_rbac_model.conf", adapter)
 	enforcer.LoadPolicy()
+
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/privkeys/today", "GET")
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/users/:username", "PUT")
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/locations", "GET")
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/guests/verify/:user_id/idcard", "PATCH")
 
 	model.Enforcer = enforcer
 

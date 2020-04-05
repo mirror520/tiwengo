@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/casbin/casbin/v2"
@@ -82,28 +83,40 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 
 	var input model.Guest
 	err := ctx.ShouldBind(&input)
-	if (err != nil) || (input.Phone == "") {
+	if (err != nil) || ((input.Phone == "") && (input.IDCard == "")) {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("您輸入的資料格式錯誤")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		return
 	}
-	logger = logger.WithFields(log.Fields{"phone": input.Phone})
 
 	var user model.User
-	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
-	if user.Username == input.Phone {
-		result = model.NewFailureResult().SetLogger(logger)
-		if user.Guest.PhoneVerify {
-			result.AddInfo("您的電話已經驗證過了")
+	if input.IDCard != "" {
+		logger = logger.WithFields(log.Fields{"username": input.IDCard})
+
+		db.Set("gorm:auto_preload", true).Where("username = ?", input.IDCard).First(&user)
+		if user.Username == input.IDCard {
+			result.AddInfo("您的身分證已經登錄過")
 			result.SetData(user)
-			ctx.AbortWithStatusJSON(http.StatusConflict, result)
-		} else {
-			result.AddInfo("您需要驗證電話")
-			result.SetData(user)
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, result)
+			ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
 		}
-		return
+	} else {
+		logger = logger.WithFields(log.Fields{"username": input.Phone})
+
+		db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
+		if user.Username == input.Phone {
+			result = model.NewFailureResult().SetLogger(logger)
+			if user.Guest.PhoneVerify {
+				result.AddInfo("您的電話已經驗證過了")
+				result.SetData(user)
+				ctx.AbortWithStatusJSON(http.StatusConflict, result)
+			} else {
+				result.AddInfo("您需要驗證電話")
+				result.SetData(user)
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, result)
+			}
+			return
+		}
 	}
 	user = input.User()
 	db.Create(&user)
@@ -251,6 +264,43 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("您的手機已通過驗證")
 	result.SetData(guest)
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+// VerifyGuestUserIDCardHandler ...
+func VerifyGuestUserIDCardHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Guest",
+		"event":      "VerifyGuestUserIDCard",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	userID, err := strconv.ParseUint(ctx.Param("user_id"), 10, 32)
+	if err != nil {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("您輸入的資料格式錯誤")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+	logger = logger.WithFields(log.Fields{"user_id": userID})
+
+	var user model.User
+	db.Set("gorm:auto_preload", true).Where("id = ?", userID).First(&user)
+	if user.ID != uint(userID) {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("您輸入的資料不正確")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+	user.Guest.IDCardVerify = true
+	db.Save(&user)
+
+	result = model.NewSuccessResult().SetLogger(logger)
+	result.AddInfo("您已完成身分證驗證")
+	result.SetData(user)
 
 	ctx.JSON(http.StatusOK, result)
 }
