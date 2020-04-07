@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -48,7 +47,6 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 		Authenticator: func(ctx *gin.Context) (interface{}, error) {
 			var loginVals model.User
 			if err := ctx.ShouldBind(&loginVals); err != nil {
-				fmt.Println(err.Error())
 				return nil, jwt.ErrMissingLoginValues
 			}
 
@@ -60,20 +58,19 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 
 				user, err := controller.LoginTccgUserHandler(&tccgUser)
 				ctx.Set("user", user)
-				ctx.Set("username", loginVals.Username)
+				ctx.Set("username", user.Username)
 
 				return user, err
 			}
 
 			if loginVals.Type == model.GuestUser {
 				guest := model.Guest{
-					Phone:      loginVals.Username,
 					PhoneToken: loginVals.Password,
 				}
 
 				user, err := controller.LoginGuestUserHandler(&guest)
 				ctx.Set("user", user)
-				ctx.Set("username", loginVals.Username)
+				ctx.Set("username", user.Username)
 
 				return user, err
 			}

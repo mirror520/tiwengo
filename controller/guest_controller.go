@@ -24,16 +24,19 @@ func LoginGuestUserHandler(input *model.Guest) (*model.User, error) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Guest",
 		"event":      "LoginGuestUser",
-		"username":   input.Phone,
 	})
 
 	var db *gorm.DB = model.DB
 
-	var user model.User
-	db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
-	if (user.Username != input.Phone) || (user.Guest.PhoneToken != input.PhoneToken) {
+	var guest model.Guest
+	db.Where("phone_token = ?", input.PhoneToken).First(&guest)
+
+	if guest.UserID == 0 {
 		return nil, errors.New("訪客驗證資料錯誤")
 	}
+
+	var user model.User
+	db.Set("gorm:auto_preload", true).Where("id = ?", guest.UserID).First(&user)
 
 	if !user.Guest.PhoneVerify {
 		return nil, errors.New("您的手機尚未驗證通過，請重新驗證")

@@ -50,7 +50,7 @@ func main() {
 	}
 
 	database.Migrate(model.DB)
-	database.Seed(model.DB)
+	// database.Seed(model.DB)
 
 	adapter, _ := gormadapter.NewAdapterByDB(model.DB)
 	enforcer, _ := casbin.NewEnforcer("keymatch_rbac_model.conf", adapter)
