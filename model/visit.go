@@ -10,3 +10,9 @@ type Visit struct {
 	DepartmentEmployee   DepartmentEmployee `json:"department_employee" gorm:"DepartmentEmployeeID"`
 	Location             Location           `json:"location" gorm:"foreignkey:LocationID"`
 }
+
+// Mask ...
+func (visit *Visit) Mask() {
+	visit.Guest.Mask()
+	visit.DepartmentEmployee.Employee.Mask()
+}

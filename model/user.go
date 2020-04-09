@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 // UserType ...
 type UserType int
 
@@ -94,4 +96,32 @@ func (guest *Guest) User() User {
 	}
 
 	return user
+}
+
+// Mask ...
+func (user *User) Mask() {
+	name := []rune(user.Name)
+	user.Name = fmt.Sprintf("%s○○", string(name[:1]))
+
+	if user.Employee.UserID != 0 {
+		user.Employee.Mask()
+	}
+
+	if user.Guest.UserID != 0 {
+		user.Guest.Mask()
+	}
+}
+
+// Mask ...
+func (guest *Guest) Mask() {
+	name := []rune(guest.Name)
+	guest.Name = fmt.Sprintf("%s○○", string(name[:1]))
+	guest.Phone = ""
+	guest.IDCard = ""
+}
+
+// Mask ...
+func (employee *Employee) Mask() {
+	name := []rune(employee.Name)
+	employee.Name = fmt.Sprintf("%s○○", string(name[:1]))
 }

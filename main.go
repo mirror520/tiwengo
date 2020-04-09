@@ -57,7 +57,7 @@ func main() {
 	enforcer.LoadPolicy()
 
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/privkeys/today", "GET")
-	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/", "GET")
+	// enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/", "GET")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/users/:username", "PUT")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/locations", "GET")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/guests/verify/:user_id/idcard", "PATCH")

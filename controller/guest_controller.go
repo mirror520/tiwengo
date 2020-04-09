@@ -301,6 +301,8 @@ func VerifyGuestUserIDCardHandler(ctx *gin.Context) {
 	user.Guest.IDCardVerify = true
 	db.Save(&user)
 
+	user.Mask()
+
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("您已完成身分證驗證")
 	result.SetData(user)

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -73,14 +72,10 @@ func UserVisitHandler(ctx *gin.Context) {
 		Preload("Location").
 		First(&visit)
 
-	var msg string
-	if location.ID == 0 {
-		msg = fmt.Sprintf("「%s」已登記訪客「%s」到「%s」洽公", employee.Name, guest.Name, department.Department)
-	} else {
-		msg = fmt.Sprintf("「%s」已登記訪客「%s」到「%s」洽公", employee.Name, guest.Name, location.Location)
-	}
+	visit.Mask()
+
 	result = model.NewSuccessResult().SetLogger(logger)
-	result.AddInfo(msg)
+	result.AddInfo("已登記訪客洽公")
 	result.SetData(visit)
 
 	ctx.JSON(http.StatusOK, result)
