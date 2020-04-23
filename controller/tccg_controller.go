@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/casbin/casbin/v2"
@@ -44,6 +45,8 @@ func LoginTccgUserHandler(input *model.TccgUser) (*model.User, error) {
 		db.Create(&user)
 		logger.Infoln("使用者第一次登入系統，建立使用者")
 
+		authPath := fmt.Sprintf("/api/v1/guests/%d/qr", user.ID)
+		enforcer.AddNamedPolicy("p", user.Username, authPath, "GET")
 		enforcer.AddRoleForUser(user.Username, "tccg_user")
 		logger.Infoln("新增使用者權限")
 	}

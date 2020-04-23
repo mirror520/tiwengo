@@ -57,8 +57,10 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 				}
 
 				user, err := controller.LoginTccgUserHandler(&tccgUser)
-				ctx.Set("user", user)
-				ctx.Set("username", user.Username)
+				if user != nil {
+					ctx.Set("user", user)
+					ctx.Set("username", user.Username)
+				}
 
 				return user, err
 			}
@@ -69,8 +71,10 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 				}
 
 				user, err := controller.LoginGuestUserHandler(&guest)
-				ctx.Set("user", user)
-				ctx.Set("username", user.Username)
+				if user != nil {
+					ctx.Set("user", user)
+					ctx.Set("username", user.Username)
+				}
 
 				return user, err
 			}
