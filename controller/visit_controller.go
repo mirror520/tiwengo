@@ -81,21 +81,21 @@ func UserVisitHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
-// GetLocationsHandler ...
-func GetLocationsHandler(ctx *gin.Context) {
+// GetBuildingLocationsHandler ...
+func GetBuildingLocationsHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Visit",
-		"event":      "GetLocations",
+		"event":      "GetBuildingLocations",
 	})
 
 	var db *gorm.DB = model.DB
 
-	var locations []model.Location
-	db.Preload("Building").Find(&locations)
+	var buildings []model.Building
+	db.Set("gorm:auto_preload", true).Find(&buildings)
 
-	logger.Infoln("成功取得所有地點")
+	logger.Infoln("成功取得所有建物地點")
 
-	ctx.JSON(http.StatusOK, &locations)
+	ctx.JSON(http.StatusOK, &buildings)
 }
 
 // ListAllGuestVisitRecordHandler ...
