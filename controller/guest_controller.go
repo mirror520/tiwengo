@@ -109,6 +109,9 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 		db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
 		if user.Username == input.Phone {
 			result = model.NewFailureResult().SetLogger(logger)
+			user.Name = ""
+			user.Guest.Name = ""
+
 			if user.Guest.PhoneVerify {
 				result.AddInfo("您的電話已經驗證過了")
 				result.SetData(user)
@@ -306,6 +309,61 @@ func VerifyGuestUserIDCardHandler(ctx *gin.Context) {
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("您已完成身分證驗證")
 	result.SetData(user)
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+// DeleteVisitRecordsAndGuestsHandler ...
+func DeleteVisitRecordsAndGuestsHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Guest",
+		"event":      "DeleteVisitRecordsAndGuestsHandler",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	todayStart := fmt.Sprintf("%s 00:00:00", now.Format("2006-01-02"))
+	todayEnd := fmt.Sprintf("%s 23:59:59", now.Format("2006-01-02"))
+	targetTime := now.AddDate(0, 0, -28)
+	targetDate := fmt.Sprintf("%s 00:00:00", targetTime.Format("2006-01-02"))
+
+	db.Exec(`
+UPDATE visits
+SET deleted_at = ?, 
+    guest_user_id = 0
+WHERE created_at < ?`, now, targetDate)
+
+	db.Exec(`
+UPDATE users 
+INNER JOIN guests ON guests.user_id=users.id
+SET users.deleted_at = ?,
+    users.username = LOWER(HEX(RANDOM_BYTES(8))),
+    users.name = '○○○',
+    guests.name = '○○○',
+    guests.phone = '0000000000',
+    guests.phone_token = '',
+    guests.id_card = ''
+WHERE users.deleted_at IS NULL
+ AND users.type = 1 
+ AND users.created_at < ?
+ AND users.id NOT IN (
+  SELECT visits.guest_user_id
+  FROM visits 
+  WHERE visits.deleted_at IS NULL
+  GROUP BY visits.guest_user_id
+)`, now, targetDate)
+
+	result = model.NewSuccessResult().SetLogger(logger)
+
+	var count int
+	db.Unscoped().Model(&model.Visit{}).Where("deleted_at BETWEEN ? AND ?", todayStart, todayEnd).Count(&count)
+	result.AddInfo(fmt.Sprintf("您已於 %s 清除 %d 筆洽公紀錄", today, count))
+
+	db.Unscoped().Model(&model.User{}).Where("deleted_at BETWEEN ? AND ?", todayStart, todayEnd).Count(&count)
+	result.AddInfo(fmt.Sprintf("您已於 %s 清除 %d 筆驗證紀錄", today, count))
 
 	ctx.JSON(http.StatusOK, result)
 }

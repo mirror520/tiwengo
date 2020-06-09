@@ -36,12 +36,24 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 		{
 			// visits.GET("/", authMiddleware.MiddlewareFunc(), controller.ListAllGuestVisitRecordHandler)
 			visits.PUT("/users/:username", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
-			visits.GET("/locations", authMiddleware.MiddlewareFunc(), controller.GetBuildingLocationsHandler)
+			visits.GET("/buildings", authMiddleware.MiddlewareFunc(), controller.GetBuildingsHandler)
 		}
 
 		auth := apiV1.Group("/auth")
 		{
 			auth.PATCH("/refresh_token", authMiddleware.RefreshHandler)
+		}
+	}
+}
+
+// SetAdminRoute ...
+func SetAdminRoute(router *gin.Engine) {
+	router.Group("/api/v1")
+	apiV1 := router.Group("/api/v1")
+	{
+		guests := apiV1.Group("/guests")
+		{
+			guests.DELETE("/today/visits", controller.DeleteVisitRecordsAndGuestsHandler)
 		}
 	}
 }

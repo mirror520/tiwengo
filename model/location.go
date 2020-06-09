@@ -3,8 +3,9 @@ package model
 // Location ...
 type Location struct {
 	Model
-	Location   string `json:"location"`
-	BuildingID uint   `json:"-"`
+	Location   string   `json:"location"`
+	BuildingID uint     `json:"-"`
+	Building   Building `json:"building" gorm:"foreignkey:BuildingID"`
 }
 
 // Building ...

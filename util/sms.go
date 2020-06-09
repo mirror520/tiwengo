@@ -61,13 +61,13 @@ func NewSMS() (*SMS, error) {
 
 // SetOTP ...
 func (s *SMS) SetOTP(guest *model.Guest) (string, string) {
-	subject := fmt.Sprintf("驗證訪客: %s, 行動電話: %s", guest.Name, guest.Phone)
+	subject := fmt.Sprintf("行動電話: %s", guest.Phone)
 	otp, _ := getRandNum()
 	token := generateRandomString(30)
-	originMsg := fmt.Sprintf("驗證碼: %s ,再次登入: %s?t=%s", otp, shortURL, token)
+	originMsg := fmt.Sprintf("驗證碼: %s ,再次登入: %s/t/%s", otp, shortURL, token)
 	limitMsg := string([]rune(originMsg)[0:shortSMSLen])
 
-	re := regexp.MustCompile(`^.*\?t=(?P<token>.*)`)
+	re := regexp.MustCompile(`^.*/t/(?P<token>.*)`)
 	token = re.ReplaceAllString(limitMsg, `${token}`)
 
 	s.SB = subject
@@ -88,7 +88,6 @@ func (s *SMS) SendSMS() (*SMSResult, error) {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(body))
 	contents := strings.Split(string(body), ",")
 
 	credit, _ := strconv.ParseFloat(contents[0], 64)

@@ -65,11 +65,12 @@ func UserVisitHandler(ctx *gin.Context) {
 		LocationID:           location.ID,
 	}
 	db.Create(&visit)
-	db.Where("id =?", visit.ID).
+	db.Where("id = ?", visit.ID).
 		Preload("Guest").
 		Preload("DepartmentEmployee.Employee").
 		Preload("DepartmentEmployee.Department").
 		Preload("Location").
+		Preload("Location.Building").
 		First(&visit)
 
 	visit.Mask()
@@ -81,17 +82,18 @@ func UserVisitHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
-// GetBuildingLocationsHandler ...
-func GetBuildingLocationsHandler(ctx *gin.Context) {
+// GetBuildingsHandler ...
+func GetBuildingsHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Visit",
-		"event":      "GetBuildingLocations",
+		"event":      "GetBuildings",
 	})
 
 	var db *gorm.DB = model.DB
 
 	var buildings []model.Building
-	db.Set("gorm:auto_preload", true).Find(&buildings)
+	db.Preload("Locations").
+		Find(&buildings)
 
 	logger.Infoln("成功取得所有建物地點")
 
@@ -113,6 +115,7 @@ func ListAllGuestVisitRecordHandler(ctx *gin.Context) {
 		Preload("DepartmentEmployee.Employee").
 		Preload("DepartmentEmployee.Department").
 		Preload("Location").
+		Preload("Location.Building").
 		Find(&visits)
 
 	result = model.NewSuccessResult().SetLogger(logger)
