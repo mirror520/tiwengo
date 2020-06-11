@@ -334,7 +334,8 @@ func DeleteVisitRecordsAndGuestsHandler(ctx *gin.Context) {
 UPDATE visits
 SET deleted_at = ?, 
     guest_user_id = 0
-WHERE created_at < ?`, now, targetDate)
+WHERE deleted_at IS NULL 
+  AND created_at < ?`, now, targetDate)
 
 	db.Exec(`
 UPDATE users 
