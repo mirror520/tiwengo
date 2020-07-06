@@ -152,7 +152,7 @@ func getPrivkey(dateKey string) (*rsa.PrivateKey, error) {
 	return parsePemToPrivateKey(privkeyPem)
 }
 
-func getTodayGuestUserQRCode(user model.User) (image.Image, error) {
+func getTodayGuestUserQRCode(user model.User, followers string) (image.Image, error) {
 	dateStr := time.Now().Format("20060102")
 	dateKey := fmt.Sprintf("date-%s", dateStr)
 
@@ -162,6 +162,10 @@ func getTodayGuestUserQRCode(user model.User) (image.Image, error) {
 	}
 
 	message := fmt.Sprintf("%d,%s", user.ID, user.Username)
+	if followers != "" {
+		message += fmt.Sprintf(",%s", followers)
+	}
+
 	ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, &privkey.PublicKey, []byte(message))
 	if err != nil {
 		return nil, err

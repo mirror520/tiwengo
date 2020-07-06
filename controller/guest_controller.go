@@ -57,12 +57,17 @@ func ShowGuestUserQRCodeHandler(ctx *gin.Context) {
 	var result *model.Result
 
 	userID := ctx.Param("user_id")
+	followers := ctx.Query("followers")
 	logger = logger.WithFields(log.Fields{"user_id": userID})
+
+	if followers != "" {
+		logger = logger.WithFields(log.Fields{"followers": followers})
+	}
 
 	var user model.User
 	db.Set("gorm:auto_preload", true).Where("id = ?", userID).First(&user)
 
-	img, err := getTodayGuestUserQRCode(user)
+	img, err := getTodayGuestUserQRCode(user, followers)
 	if err != nil {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("無法取得今天的 QR Code")
@@ -72,6 +77,8 @@ func ShowGuestUserQRCodeHandler(ctx *gin.Context) {
 
 	w := ctx.Writer
 	png.Encode(w, img)
+
+	logger.Info("成功產製 QR Code")
 }
 
 // RegisterGuestUserHandler ...

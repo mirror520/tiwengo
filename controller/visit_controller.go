@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,11 +52,11 @@ func UserVisitHandler(ctx *gin.Context) {
 	var departmentEmployee model.DepartmentEmployee
 	db.Where("department_id = ? AND employee_user_id = ?", department.ID, employee.ID).Last(&departmentEmployee)
 
-	var input model.Location
+	var input model.Visit
 	var location model.Location
 	ctx.ShouldBind(&input)
-	if input.ID != 0 {
-		db.Where("id = ?", input.ID).First(&location)
+	if input.LocationID != 0 {
+		db.Where("id = ?", input.LocationID).First(&location)
 		logger = logger.WithFields(log.Fields{"location": location.Location})
 	}
 
@@ -64,13 +65,30 @@ func UserVisitHandler(ctx *gin.Context) {
 		DepartmentEmployeeID: departmentEmployee.ID,
 		LocationID:           location.ID,
 	}
+
 	db.Create(&visit)
+
+	if input.Followers != nil {
+		followers := ""
+		for _, follower := range input.Followers {
+			db.Create(&model.Follower{
+				VisitID: visit.ID,
+				Name:    follower.Name,
+			})
+
+			followers += fmt.Sprintf("[%s]", follower.Name)
+		}
+
+		logger = logger.WithFields(log.Fields{"followrs": followers})
+	}
+
 	db.Where("id = ?", visit.ID).
 		Preload("Guest").
 		Preload("DepartmentEmployee.Employee").
 		Preload("DepartmentEmployee.Department").
 		Preload("Location").
 		Preload("Location.Building").
+		Preload("Followers").
 		First(&visit)
 
 	visit.Mask()
