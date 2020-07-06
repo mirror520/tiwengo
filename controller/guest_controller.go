@@ -345,6 +345,13 @@ WHERE deleted_at IS NULL
   AND created_at < ?`, now, targetDate)
 
 	db.Exec(`
+DELETE FROM followers 
+WHERE visit_id IN (
+  SELECT id FROM visits 
+  WHERE guest_user_id = 0
+)`)
+
+	db.Exec(`
 UPDATE users 
 INNER JOIN guests ON guests.user_id=users.id
 SET users.deleted_at = ?,
@@ -372,6 +379,8 @@ WHERE p_type LIKE 'p'
  AND v0 NOT IN (
   SELECT username FROM users
 )`)
+
+	model.Enforcer.LoadPolicy()
 
 	result = model.NewSuccessResult().SetLogger(logger)
 
