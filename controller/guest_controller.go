@@ -364,6 +364,15 @@ WHERE users.deleted_at IS NULL
   GROUP BY visits.guest_user_id
 )`, now, targetDate)
 
+	db.Exec(`
+DELETE FROM casbin_rule 
+WHERE p_type LIKE 'p'
+ AND v1 LIKE '%qr'
+ AND v2 LIKE 'GET'
+ AND v0 NOT IN (
+  SELECT username FROM users
+)`)
+
 	result = model.NewSuccessResult().SetLogger(logger)
 
 	var count int
