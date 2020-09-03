@@ -74,7 +74,7 @@ func login(user *model.TccgUser) (*model.TccgUser, error) {
 	client := &http.Client{}
 	b, _ := json.Marshal(user)
 
-	req, err := http.NewRequest("PATCH", tccgBaseURL+"/login", bytes.NewBuffer(b))
+	req, err := http.NewRequest("PATCH", tccgBaseURL+"/users/auth", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
@@ -86,14 +86,25 @@ func login(user *model.TccgUser) (*model.TccgUser, error) {
 	}
 	defer resp.Body.Close()
 
+	var result *model.Result
 	if resp.StatusCode != http.StatusOK {
-		var result model.Result
 		json.NewDecoder(resp.Body).Decode(&result)
 		return nil, errors.New(result.Info[0])
 	}
 
-	user = &model.TccgUser{}
-	json.NewDecoder(resp.Body).Decode(&user)
+	result = &model.Result{}
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	jsonStr, err := json.Marshal(result.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(jsonStr, &user); err != nil {
+		return nil, err
+	}
 
 	return user, nil
 }

@@ -8,7 +8,6 @@ import (
 
 // SetRoute ...
 func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
-	router.Group("/api/v1")
 	apiV1 := router.Group("/api/v1")
 	{
 		privkeys := apiV1.Group("/privkeys")
@@ -48,7 +47,6 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 
 // SetAdminRoute ...
 func SetAdminRoute(router *gin.Engine) {
-	router.Group("/api/v1")
 	apiV1 := router.Group("/api/v1")
 	{
 		guests := apiV1.Group("/guests")
