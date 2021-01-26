@@ -20,6 +20,6 @@ type Follower struct {
 
 // Mask ...
 func (visit *Visit) Mask() {
-	visit.Guest.Mask()
-	visit.DepartmentEmployee.Employee.Mask()
+	visit.Guest.Mask(VisitMask)
+	visit.DepartmentEmployee.Employee.Mask(VisitMask)
 }

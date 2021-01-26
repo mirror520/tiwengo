@@ -106,9 +106,10 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 
 		db.Set("gorm:auto_preload", true).Where("username = ?", input.IDCard).First(&user)
 		if user.Username == input.IDCard {
+			result = model.NewFailureResult().SetLogger(logger)
 			result.AddInfo("您的身分證已經登錄過")
-			result.SetData(user)
 			ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+			return
 		}
 	} else {
 		logger = logger.WithFields(log.Fields{"username": input.Phone})
@@ -116,8 +117,7 @@ func RegisterGuestUserHandler(ctx *gin.Context) {
 		db.Set("gorm:auto_preload", true).Where("username = ?", input.Phone).First(&user)
 		if user.Username == input.Phone {
 			result = model.NewFailureResult().SetLogger(logger)
-			user.Name = ""
-			user.Guest.Name = ""
+			user.Mask(model.RegisterMask)
 
 			if user.Guest.PhoneVerify {
 				result.AddInfo("您的電話已經驗證過了")
@@ -206,6 +206,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	logger.Infoln("SMS OTP 已加入 Redis")
 
 	guest.PhoneToken = token
+	guest.PhoneVerify = false
 	db.Save(&guest)
 
 	if os.Getenv("GIN_MODE") == "release" {
@@ -219,6 +220,8 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 		}
 		logger.WithFields(log.Fields{"credit": smsResult.Credit})
 	}
+
+	guest.Mask(model.RegisterMask)
 
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("SMS OTP 發送成功")
@@ -261,7 +264,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	var guest model.Guest = user.Guest
 	key := fmt.Sprintf("otp-%s", guest.Phone)
 	otp, err := redisClient.Get(key).Result()
-	if (err != nil) || (otp != input.PhoneOTP) || (guest.PhoneToken != input.PhoneToken) {
+	if (err != nil) || (otp != input.PhoneOTP) {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("驗證碼不正確或已經失效")
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
@@ -311,7 +314,7 @@ func VerifyGuestUserIDCardHandler(ctx *gin.Context) {
 	user.Guest.IDCardVerify = true
 	db.Save(&user)
 
-	user.Mask()
+	user.Mask(model.VisitMask)
 
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("您已完成身分證驗證")

@@ -123,6 +123,8 @@ func AuthMiddleware() *jwt.GinJWTMiddleware {
 			}
 			logger = logger.WithFields(log.Fields{"username": user.Username})
 
+			user.Mask(model.RegisterMask)
+
 			result := model.NewSuccessResult().SetLogger(logger)
 			result.AddInfo("您已登入成功")
 			result.SetData(&user)

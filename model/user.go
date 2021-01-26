@@ -98,30 +98,56 @@ func (guest *Guest) User() User {
 	return user
 }
 
+// MaskTarget ...
+type MaskTarget int
+
+const (
+	// RegisterMask ...
+	RegisterMask MaskTarget = iota
+
+	// VisitMask ...
+	VisitMask
+)
+
 // Mask ...
-func (user *User) Mask() {
-	name := []rune(user.Name)
-	user.Name = fmt.Sprintf("%s○○", string(name[:1]))
+func (user *User) Mask(target MaskTarget) {
+	if target == VisitMask {
+		name := []rune(user.Name)
+		user.Name = fmt.Sprintf("%s○○", string(name[:1]))
+	}
+
+	if target == RegisterMask {
+		user.Name = ""
+	}
 
 	if user.Employee.UserID != 0 {
-		user.Employee.Mask()
+		user.Employee.Mask(target)
 	}
 
 	if user.Guest.UserID != 0 {
-		user.Guest.Mask()
+		user.Guest.Mask(target)
 	}
 }
 
 // Mask ...
-func (guest *Guest) Mask() {
-	name := []rune(guest.Name)
-	guest.Name = fmt.Sprintf("%s○○", string(name[:1]))
-	guest.Phone = ""
-	guest.IDCard = ""
+func (guest *Guest) Mask(target MaskTarget) {
+	if target == VisitMask {
+		name := []rune(guest.Name)
+		guest.Name = fmt.Sprintf("%s○○", string(name[:1]))
+		guest.Phone = ""
+		guest.IDCard = ""
+	}
+
+	if target == RegisterMask {
+		guest.Name = ""
+		guest.PhoneToken = ""
+	}
 }
 
 // Mask ...
-func (employee *Employee) Mask() {
-	name := []rune(employee.Name)
-	employee.Name = fmt.Sprintf("%s○○", string(name[:1]))
+func (employee *Employee) Mask(target MaskTarget) {
+	if target == VisitMask {
+		name := []rune(employee.Name)
+		employee.Name = fmt.Sprintf("%s○○", string(name[:1]))
+	}
 }
