@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	casbin "github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/database"
 	"github.com/mirror520/tiwengo/environment"
@@ -16,6 +18,9 @@ import (
 	"github.com/mirror520/tiwengo/route"
 	cors "github.com/rs/cors/wrapper/gin"
 	log "github.com/sirupsen/logrus"
+	limiter "github.com/ulule/limiter/v3"
+	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
+	sredis "github.com/ulule/limiter/v3/drivers/store/redis"
 
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
@@ -41,14 +46,14 @@ func connDB() *gorm.DB {
 	return db
 }
 
-func connRedis() *redis.Client {
+func connRedis(ctx context.Context) *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:6379", environment.RedisHost),
 		Password: "",
 		DB:       0,
 	})
 
-	if err := client.Ping().Err(); err != nil {
+	if err := client.Ping(ctx).Err(); err != nil {
 		log.WithFields(log.Fields{"db": "redis"}).
 			Fatalln(err.Error())
 	}
@@ -69,11 +74,35 @@ func loadCasbinEnforcer(db *gorm.DB) *casbin.Enforcer {
 	return enforcer
 }
 
+func createLimitMiddleware(redisClient *redis.Client) gin.HandlerFunc {
+	rate, _ := limiter.NewRateFromFormatted(environment.APILimitRate)
+	store, _ := sredis.NewStoreWithOptions(redisClient, limiter.StoreOptions{
+		Prefix:   "limiter_gin",
+		MaxRetry: 3,
+	})
+
+	limitMiddleware := mgin.NewMiddleware(
+		limiter.New(store, rate),
+		mgin.WithLimitReachedHandler(func(ctx *gin.Context) {
+			logger := log.WithFields(log.Fields{
+				"client": ctx.ClientIP(),
+			})
+
+			result := model.NewFailureResult().SetLogger(logger)
+			result.AddInfo("您嘗試使用資源的次數太多囉，請休息一下！")
+			ctx.AbortWithStatusJSON(http.StatusTooManyRequests, result)
+		}),
+	)
+
+	return limitMiddleware
+}
+
 func externalRouter() *gin.Engine {
 	router := gin.Default()
 	authMiddleware, _ := jwt.New(middleware.AuthMiddleware())
+	limitMiddleware := createLimitMiddleware(model.RedisClient)
 	router.Use(cors.AllowAll())
-	route.SetRoute(router, authMiddleware)
+	route.SetRoute(router, authMiddleware, limitMiddleware)
 	return router
 }
 
@@ -85,7 +114,7 @@ func internalRouter() *gin.Engine {
 
 func main() {
 	model.DB = connDB()
-	model.RedisClient = connRedis()
+	model.RedisClient = connRedis(model.RedisContext)
 	model.Enforcer = loadCasbinEnforcer(model.DB)
 
 	defer model.DB.Close()

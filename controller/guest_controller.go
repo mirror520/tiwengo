@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"image/png"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"github.com/jinzhu/gorm"
 	"github.com/mirror520/tiwengo/model"
 	"github.com/mirror520/tiwengo/util"
@@ -150,6 +151,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var db *gorm.DB = model.DB
 	var redisClient *redis.Client = model.RedisClient
+	var redisCtx context.Context = model.RedisContext
 	var result *model.Result
 
 	var input model.Guest
@@ -189,12 +191,13 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	key := fmt.Sprintf("otp-%s", guest.Phone)
 	redisResult := redisClient.SetNX(
+		redisCtx,
 		key,
 		otp,
 		1*time.Minute,
 	)
 	if !redisResult.Val() {
-		ttl := redisClient.TTL(key)
+		ttl := redisClient.TTL(redisCtx, key)
 		msg := fmt.Sprintf("SMS 請求太頻繁，請於 %s 後再嘗試", ttl.Val().String())
 
 		result = model.NewFailureResult().SetLogger(logger)
@@ -240,6 +243,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 	var db *gorm.DB = model.DB
 	var enforcer *casbin.Enforcer = model.Enforcer
 	var redisClient *redis.Client = model.RedisClient
+	var redisCtx context.Context = model.RedisContext
 	var result *model.Result
 
 	var input model.Guest
@@ -263,7 +267,7 @@ func VerifyGuestPhoneOTPHandler(ctx *gin.Context) {
 
 	var guest model.Guest = user.Guest
 	key := fmt.Sprintf("otp-%s", guest.Phone)
-	otp, err := redisClient.Get(key).Result()
+	otp, err := redisClient.Get(redisCtx, key).Result()
 	if (err != nil) || (otp != input.PhoneOTP) {
 		result = model.NewFailureResult().SetLogger(logger)
 		result.AddInfo("驗證碼不正確或已經失效")

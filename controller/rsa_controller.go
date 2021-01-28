@@ -104,6 +104,7 @@ func parsePemToPublicKey(pemStr string) (*rsa.PublicKey, error) {
 
 func createPrivkey(dateKey string) (string, error) {
 	redisClient := model.RedisClient
+	redisCtx := model.RedisContext
 
 	privkey, _ := generateKeyPair(1024)
 	privkeyPem := new(bytes.Buffer)
@@ -118,21 +119,23 @@ func createPrivkey(dateKey string) (string, error) {
 	}
 
 	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
-	err = redisClient.HSet(dateKey, map[string]interface{}{
+	err = redisClient.HSet(redisCtx, dateKey, map[string]interface{}{
 		"privkey":    privkeyPem.String(),
 		"ciphertext": encodedCiphertext,
 	}).Err()
 	if err != nil {
 		return "", err
 	}
-	redisClient.Expire(dateKey, 24*time.Hour)
+	redisClient.Expire(redisCtx, dateKey, 24*time.Hour)
 
 	return privkeyPem.String(), nil
 }
 
 func getPrivkeyPem(dateKey string) (string, error) {
 	redisClient := model.RedisClient
-	privkeyPem, err := redisClient.HGet(dateKey, "privkey").Result()
+	redisCtx := model.RedisContext
+
+	privkeyPem, err := redisClient.HGet(redisCtx, dateKey, "privkey").Result()
 	if err != nil {
 		privkeyPem, err = createPrivkey(dateKey)
 		if err != nil {

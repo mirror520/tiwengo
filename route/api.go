@@ -7,7 +7,7 @@ import (
 )
 
 // SetRoute ...
-func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
+func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware, limitMiddleware gin.HandlerFunc) {
 	apiV1 := router.Group("/api/v1")
 	{
 		privkeys := apiV1.Group("/privkeys")
@@ -16,6 +16,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 		}
 
 		users := apiV1.Group("/users")
+		users.Use(limitMiddleware)
 		{
 			users.PATCH("/tccg/login", authMiddleware.LoginHandler)
 		}
@@ -25,10 +26,10 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 			guests.GET("/:user_id/qr", authMiddleware.MiddlewareFunc(), controller.ShowGuestUserQRCodeHandler)
 			guests.PATCH("/verify/:user_id/idcard", authMiddleware.MiddlewareFunc(), controller.VerifyGuestUserIDCardHandler)
 
-			guests.PATCH("/login", authMiddleware.LoginHandler)
-			guests.POST("/register", controller.RegisterGuestUserHandler)
-			guests.PATCH("/register/phone/otp", controller.SendGuestPhoneOTPHandler)
-			guests.PATCH("/register/phone/otp/verify", controller.VerifyGuestPhoneOTPHandler)
+			guests.PATCH("/login", limitMiddleware, authMiddleware.LoginHandler)
+			guests.POST("/register", limitMiddleware, controller.RegisterGuestUserHandler)
+			guests.PATCH("/register/phone/otp", limitMiddleware, controller.SendGuestPhoneOTPHandler)
+			guests.PATCH("/register/phone/otp/verify", limitMiddleware, controller.VerifyGuestPhoneOTPHandler)
 		}
 
 		visits := apiV1.Group("/visits")
@@ -40,7 +41,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware) {
 
 		auth := apiV1.Group("/auth")
 		{
-			auth.PATCH("/refresh_token", authMiddleware.RefreshHandler)
+			auth.PATCH("/refresh_token", limitMiddleware, authMiddleware.RefreshHandler)
 		}
 	}
 }

@@ -38,4 +38,7 @@ var (
 
 	// SMSPassword ...
 	SMSPassword = os.Getenv("SMS_PWD")
+
+	// APILimitRate ...
+	APILimitRate = os.Getenv("API_LIMIT_RATE")
 )
