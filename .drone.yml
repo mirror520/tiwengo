@@ -1,0 +1,10 @@
+kind: pipeline
+type: docker
+name: default
+
+steps:
+- name: backend
+  image: golang:1.15-alpine
+  commands:
+  - go build
+  - go test -v
