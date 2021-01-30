@@ -17,6 +17,8 @@ steps:
   volumes:
   - name: deps
     path: /go
+  environment:
+    REDIS_HOST: redis
   commands:
   - go test -v
 
