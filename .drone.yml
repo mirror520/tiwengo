@@ -3,8 +3,23 @@ type: docker
 name: default
 
 steps:
-- name: backend
+- name: build
   image: golang:1.15
+  volumes:
+  - name: deps
+    path: /go
   commands:
+  - go get
   - go build
+
+- name: test
+  image: golang:1.15
+  volumes:
+  - name: deps
+    path: /go
+  commands:
   - go test -v
+
+volumes:
+- name: deps
+  temp: {}
