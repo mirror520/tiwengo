@@ -62,7 +62,7 @@ func Seed(db *gorm.DB) {
 			},
 		},
 		{
-			Building: "惠中路",
+			Building: "惠中樓",
 			Locations: []model.Location{
 				{Location: "惠中路"},
 				{Location: "川堂"},
