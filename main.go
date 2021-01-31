@@ -41,7 +41,7 @@ func connDB() *gorm.DB {
 	}
 
 	database.Migrate(db)
-	// database.Seed(db)
+	database.Seed(db)
 
 	return db
 }

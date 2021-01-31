@@ -18,6 +18,10 @@ steps:
   - name: deps
     path: /go
   environment:
+    DB_HOST: mysql
+    DB_USERNAME: tiwengo
+    DB_PASSWORD: password
+    DB_NAME: tiwengo
     REDIS_HOST: redis
   commands:
   - go test -v
@@ -25,3 +29,14 @@ steps:
 volumes:
 - name: deps
   temp: {}
+
+services:
+- name: redis
+  image: redis:6-alpine
+- name: mysql
+  image: mysql:8
+  environment:
+    MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    MYSQL_DATABASE: tiwengo
+    MYSQL_USER: tiwengo
+    MYSQL_PASSWORD: password
