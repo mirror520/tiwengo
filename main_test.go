@@ -7,6 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestConnDB(t *testing.T) {
+	assert := assert.New(t)
+
+	db := connDB()
+
+	var tables []struct{}
+	db.Raw("SHOW TABLES").Scan(&tables)
+
+	assert.Equal(10, len(tables), "10 tables initialize")
+}
+
 func TestConnRedis(t *testing.T) {
 	assert := assert.New(t)
 
