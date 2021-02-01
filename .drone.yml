@@ -63,6 +63,23 @@ steps:
     password: 
       from_secret: docker_password
 
+- name: deploy
+  image: plugins/ssh
+  volumes:
+  - name: ssh
+    path: /root/.ssh
+  settings:
+    host: 10.50.78.1
+    username: ar0660
+    key_path: /root/.ssh/id_rsa
+    scripts:
+    - whoami
+
+volumes:
+- name: ssh
+  host:
+    path: /home/ar0660/.ssh
+
 trigger:
   event:
   - promote
