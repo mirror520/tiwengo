@@ -1,6 +1,6 @@
 kind: pipeline
 type: docker
-name: default
+name: build
 
 steps:
 - name: build
@@ -40,3 +40,49 @@ services:
     MYSQL_DATABASE: tiwengo
     MYSQL_USER: tiwengo
     MYSQL_PASSWORD: password
+
+trigger:
+  event:
+  - push
+  - pull_request
+
+---
+kind: pipeline
+type: docker
+name: deploy
+
+steps:
+- name: release
+  image: plugins/docker
+  settings:
+    repo: tccgov.azurecr.io/tiwengo
+    tags:
+    - ${DOCKER_TAG}
+    registry: tccgov.azurecr.io
+    username: tccgov
+    password: 
+      from_secret: docker_password
+
+- name: deploy
+  image: appleboy/drone-ssh
+  volumes:
+  - name: ssh_key
+    path: /root/.ssh
+  settings:
+    host: 10.78.0.1
+    username: ar0660
+    key_path: /root/.ssh/id_rsa
+    script:
+    - whoami
+    - echo "run deploy.sh"
+
+volumes:
+- name: ssh_key
+  host:
+    path: /home/ar0660/.ssh
+
+trigger:
+  event:
+  - promote
+  target:
+  - production
