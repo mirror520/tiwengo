@@ -72,8 +72,9 @@ steps:
     host: 10.78.0.1
     username: ar0660
     key_path: /root/.ssh/id_rsa
-    scripts:
+    script:
     - whoami
+    - echo "run deploy.sh"
 
 volumes:
 - name: ssh_key
