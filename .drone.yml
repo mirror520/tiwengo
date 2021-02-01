@@ -66,17 +66,17 @@ steps:
 - name: deploy
   image: plugins/ssh
   volumes:
-  - name: ssh
+  - name: ssh_key
     path: /root/.ssh
   settings:
-    host: 10.50.78.1
+    host: 10.78.0.1
     username: ar0660
     key_path: /root/.ssh/id_rsa
     scripts:
     - whoami
 
 volumes:
-- name: ssh
+- name: ssh_key
   host:
     path: /home/ar0660/.ssh
 
