@@ -64,7 +64,7 @@ steps:
       from_secret: docker_password
 
 - name: deploy
-  image: plugins/ssh
+  image: appleboy/drone-ssh
   volumes:
   - name: ssh_key
     path: /root/.ssh
