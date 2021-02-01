@@ -41,6 +41,11 @@ services:
     MYSQL_USER: tiwengo
     MYSQL_PASSWORD: password
 
+trigger:
+  event:
+  - push
+  - pull_request
+
 ---
 kind: pipeline
 type: docker
@@ -52,7 +57,7 @@ steps:
   settings:
     repo: tccgov.azurecr.io/tiwengo
     tags:
-    - $DOCKER_TAG
+    - ${DOCKER_TAG}
     registry: tccgov.azurecr.io
     username: tccgov
     password: 
