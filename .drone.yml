@@ -1,6 +1,6 @@
 kind: pipeline
 type: docker
-name: default
+name: build
 
 steps:
 - name: build
@@ -40,3 +40,26 @@ services:
     MYSQL_DATABASE: tiwengo
     MYSQL_USER: tiwengo
     MYSQL_PASSWORD: password
+
+---
+kind: pipeline
+type: docker
+name: deploy
+
+steps:
+- name: release
+  image: plugins/docker
+  settings:
+    repo: tccgov.azurecr.io/tiwengo
+    tags:
+    - $DOCKER_TAG
+    registry: tccgov.azurecr.io
+    username: tccgov
+    password: 
+      from_secret: docker_password
+
+trigger:
+  event:
+  - promote
+  target:
+  - production
