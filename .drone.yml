@@ -49,7 +49,7 @@ trigger:
 ---
 kind: pipeline
 type: docker
-name: deploy
+name: deploy-staging
 
 steps:
 - name: release
@@ -63,7 +63,7 @@ steps:
     password: 
       from_secret: docker_password
 
-- name: deploy-staging
+- name: deploy
   image: appleboy/drone-ssh
   volumes:
   - name: ssh_key
@@ -76,9 +76,6 @@ steps:
     - cd /home/ar0660/workspace
     - sudo docker-compose down
     - sudo docker-compose up -d
-  when:
-    target:
-    - staging
 
 volumes:
 - name: ssh_key
@@ -90,4 +87,26 @@ trigger:
   - promote
   target:
   - staging
+
+---
+kind: pipeline
+type: kubernetes
+name: deploy-production
+
+steps:
+- name: release
+  image: plugins/docker
+  settings:
+    repo: tccgov.azurecr.io/tiwengo
+    tags:
+    - ${DOCKER_TAG}
+    registry: tccgov.azurecr.io
+    username: tccgov
+    password: 
+      from_secret: docker_password
+
+trigger:
+  event:
+  - promote
+  target:
   - production
