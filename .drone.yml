@@ -63,7 +63,7 @@ steps:
     password: 
       from_secret: docker_password
 
-- name: deploy
+- name: deploy-staging
   image: appleboy/drone-ssh
   volumes:
   - name: ssh_key
@@ -73,8 +73,12 @@ steps:
     username: ar0660
     key_path: /root/.ssh/id_rsa
     script:
-    - whoami
-    - echo "run deploy.sh"
+    - cd /home/ar0660/workspace
+    - sudo docker-compose down
+    - sudo docker-compose up -d
+  when:
+    target:
+    - staging
 
 volumes:
 - name: ssh_key
@@ -85,4 +89,5 @@ trigger:
   event:
   - promote
   target:
+  - staging
   - production
