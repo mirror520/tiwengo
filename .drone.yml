@@ -127,7 +127,7 @@ steps:
     - echo "kubectl apply -f deployment.yaml"
     - echo "--- OR ---"
     - echo "helm upgrade tiwengo ar0660/tiwengo -f values.yaml -n default"
-    - echo "--- END --""
+    - echo "--- END ---"
 
 volumes:
 - name: ssh_key
