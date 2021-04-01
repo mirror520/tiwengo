@@ -119,7 +119,7 @@ steps:
   - name: ssh_key
     path: /root/.ssh
   settings:
-    host: 192.168.2.150
+    host: proxy.tccg.tw
     username: ar0660
     key_path: /root/.ssh/id_rsa
     script:
@@ -127,7 +127,7 @@ steps:
     - echo "kubectl apply -f deployment.yaml"
     - echo "--- OR ---"
     - echo "helm upgrade tiwengo ar0660/tiwengo -f values.yaml -n default"
-    - echo "--- End --""
+    - echo "--- END ---"
 
 volumes:
 - name: ssh_key
