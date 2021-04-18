@@ -174,15 +174,7 @@ func SendGuestPhoneOTPHandler(ctx *gin.Context) {
 	}
 
 	var guest model.Guest = user.Guest
-	sms, err := util.NewSMS()
-	if err != nil {
-		result = model.NewFailureResult().SetLogger(logger)
-		result.AddInfo("SMS 系統初始化發生錯誤")
-		result.AddInfo(err.Error())
-		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
-		return
-	}
-
+	sms := util.NewSMS()
 	otp, token := sms.SetOTP(&guest)
 	logger.WithFields(log.Fields{
 		"otp":   otp,
@@ -331,7 +323,7 @@ func VerifyGuestUserIDCardHandler(ctx *gin.Context) {
 func DeleteVisitRecordsAndGuestsHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Guest",
-		"event":      "DeleteVisitRecordsAndGuestsHandler",
+		"event":      "DeleteVisitRecordsAndGuests",
 	})
 
 	var db *gorm.DB = model.DB
