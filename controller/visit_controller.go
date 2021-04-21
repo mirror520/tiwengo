@@ -15,7 +15,7 @@ import (
 func UserVisitHandler(ctx *gin.Context) {
 	logger := log.WithFields(log.Fields{
 		"controller": "Visit",
-		"event":      "GuestVisit",
+		"event":      "UserVisit",
 	})
 
 	var db *gorm.DB = model.DB
@@ -139,6 +139,67 @@ func ListAllGuestVisitRecordHandler(ctx *gin.Context) {
 	result = model.NewSuccessResult().SetLogger(logger)
 	result.AddInfo("成功取得所有拜訪紀錄")
 	result.SetData(visits)
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+// TcpassUserVisitHandler ...
+func TcpassUserVisitHandler(ctx *gin.Context) {
+	logger := log.WithFields(log.Fields{
+		"controller": "Visit",
+		"event":      "TcpassUserVisit",
+	})
+
+	var db *gorm.DB = model.DB
+	var result *model.Result
+
+	uuid := ctx.Param("uuid")
+	logger = logger.WithFields(log.Fields{"uuid": uuid})
+
+	var employee model.User
+	employeeUsername, ok := ctx.Get("username")
+	if !ok {
+		result = model.NewFailureResult().SetLogger(logger)
+		result.AddInfo("找不到員工使用者")
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, result)
+		return
+	}
+	db.Set("gorm:auto_preload", true).Where("username = ?", employeeUsername).First(&employee)
+	logger = logger.WithFields(log.Fields{"employee": employee.Username})
+
+	departments := employee.Employee.Departments
+	department := departments[len(departments)-1]
+	var departmentEmployee model.DepartmentEmployee
+	db.Where("department_id = ? AND employee_user_id = ?", department.ID, employee.ID).Last(&departmentEmployee)
+
+	var input model.TcpassVisit
+	var location model.Location
+	ctx.ShouldBind(&input)
+	if input.LocationID != 0 {
+		db.Where("id = ?", input.LocationID).First(&location)
+		logger = logger.WithFields(log.Fields{"location": location.Location})
+	}
+
+	visit := model.TcpassVisit{
+		DepartmentEmployeeID: departmentEmployee.ID,
+		LocationID:           location.ID,
+		UUID:                 uuid,
+	}
+
+	db.Create(&visit)
+
+	db.Where("id = ?", visit.ID).
+		Preload("DepartmentEmployee.Employee").
+		Preload("DepartmentEmployee.Department").
+		Preload("Location").
+		Preload("Location.Building").
+		First(&visit)
+
+	visit.Mask()
+
+	result = model.NewSuccessResult().SetLogger(logger)
+	result.AddInfo("已登記訪客洽公")
+	result.SetData(visit)
 
 	ctx.JSON(http.StatusOK, result)
 }

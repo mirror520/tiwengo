@@ -37,6 +37,8 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware, limitMid
 			// visits.GET("/", authMiddleware.MiddlewareFunc(), controller.ListAllGuestVisitRecordHandler)
 			visits.PUT("/users/:username", authMiddleware.MiddlewareFunc(), controller.UserVisitHandler)
 			visits.GET("/buildings", authMiddleware.MiddlewareFunc(), controller.GetBuildingsHandler)
+
+			visits.PUT("/tcpass/users/:uuid", authMiddleware.MiddlewareFunc(), controller.TcpassUserVisitHandler)
 		}
 
 		auth := apiV1.Group("/auth")
