@@ -15,7 +15,7 @@ func TestConnDB(t *testing.T) {
 	var tables []struct{}
 	db.Raw("SHOW TABLES").Scan(&tables)
 
-	assert.Equal(10, len(tables), "10 tables initialize")
+	assert.Equal(11, len(tables), "11 tables initialize")
 }
 
 func TestConnRedis(t *testing.T) {
