@@ -12,5 +12,6 @@ func Migrate(db *gorm.DB) {
 		&model.User{}, &model.Employee{}, &model.Guest{},
 		&model.Department{}, &model.Institution{},
 		&model.Location{}, &model.Building{},
+		&model.TcpassVisit{},
 	)
 }
