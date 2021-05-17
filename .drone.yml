@@ -24,7 +24,7 @@ steps:
     DB_NAME: tiwengo
     REDIS_HOST: redis
   commands:
-  - go test -v
+  - go test -v ./...
 
 - name: code-analysis
   image: aosapps/drone-sonar-plugin
