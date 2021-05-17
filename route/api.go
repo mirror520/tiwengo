@@ -19,6 +19,7 @@ func SetRoute(router *gin.Engine, authMiddleware *jwt.GinJWTMiddleware, limitMid
 		users.Use(limitMiddleware)
 		{
 			users.PATCH("/tccg/login", authMiddleware.LoginHandler)
+			users.PATCH("/mqtt/token", authMiddleware.MiddlewareFunc(), controller.RefreshMQTTUserTokenHandler)
 		}
 
 		guests := apiV1.Group("/guests")

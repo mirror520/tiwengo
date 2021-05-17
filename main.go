@@ -70,6 +70,7 @@ func loadCasbinEnforcer(db *gorm.DB) *casbin.Enforcer {
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/users/:username", "PUT")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/buildings", "GET")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/guests/verify/:user_id/idcard", "PATCH")
+	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/users/mqtt/token", "PATCH")
 	enforcer.AddNamedPolicy("p", "tccg_user", "/api/v1/visits/tcpass/users/:uuid", "PUT")
 
 	return enforcer
