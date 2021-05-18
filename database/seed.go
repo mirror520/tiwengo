@@ -58,7 +58,11 @@ func Seed(db *gorm.DB) {
 			Locations: []model.Location{
 				{Location: "文心路"},
 				{Location: "川堂"},
-				{Location: "聯合洽公區"},
+				{
+					Location: "聯合洽公區",
+					Capacity: 100,
+					Current:  0,
+				},
 			},
 		},
 		{

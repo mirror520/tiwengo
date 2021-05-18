@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -54,16 +56,35 @@ func UserVisitHandler(ctx *gin.Context) {
 
 	var input model.Visit
 	var location model.Location
+	var lastVisit model.Visit
+	var isLeave bool = false
 	ctx.ShouldBind(&input)
 	if input.LocationID != 0 {
 		db.Where("id = ?", input.LocationID).First(&location)
 		logger = logger.WithFields(log.Fields{"location": location.Location})
+
+		if location.Capacity > 0 {
+			now := time.Now()
+			todayStart := fmt.Sprintf("%s 00:00:00", now.Format("2006-01-02"))
+			db.Where("guest_user_id = ? AND location_id = ? AND created_at > ?", guest.ID, location.ID, todayStart).
+				Preload("Followers").
+				Last(&lastVisit)
+
+			if lastVisit.ID != 0 && !lastVisit.Leave {
+				location.Current -= uint(len(lastVisit.Followers)) + 1
+				isLeave = true
+			} else {
+				location.Current++
+				isLeave = false
+			}
+		}
 	}
 
 	visit := model.Visit{
 		GuestUserID:          guest.ID,
 		DepartmentEmployeeID: departmentEmployee.ID,
 		LocationID:           location.ID,
+		Leave:                isLeave,
 	}
 
 	db.Create(&visit)
@@ -79,7 +100,29 @@ func UserVisitHandler(ctx *gin.Context) {
 			followers += fmt.Sprintf("[%s]", follower.Name)
 		}
 
+		if location.ID != 0 && location.Capacity > 0 {
+			if lastVisit.ID == 0 || lastVisit.Leave {
+				location.Current += uint(len(input.Followers))
+			}
+		}
+
 		logger = logger.WithFields(log.Fields{"followrs": followers})
+	}
+
+	if location.ID != 0 && location.Capacity > 0 {
+		db.Save(location)
+
+		model.MQTTClient.Publish(
+			fmt.Sprintf("location/%d", location.ID),
+			0,
+			true,
+			strconv.Itoa(int(location.Current)),
+		).Wait()
+
+		logger.WithFields(log.Fields{
+			"service":  "mqtt",
+			"location": location.Location,
+		}).Infoln("發送地點更新人數")
 	}
 
 	db.Where("id = ?", visit.ID).
@@ -174,19 +217,53 @@ func TcpassUserVisitHandler(ctx *gin.Context) {
 
 	var input model.TcpassVisit
 	var location model.Location
+	var lastVisit model.TcpassVisit
+	var isLeave bool = false
 	ctx.ShouldBind(&input)
 	if input.LocationID != 0 {
 		db.Where("id = ?", input.LocationID).First(&location)
 		logger = logger.WithFields(log.Fields{"location": location.Location})
+
+		if location.Capacity > 0 {
+			now := time.Now()
+			todayStart := fmt.Sprintf("%s 00:00:00", now.Format("2006-01-02"))
+			db.Where("uuid = ? AND location_id = ? AND created_at > ?", uuid, location.ID, todayStart).
+				Last(&lastVisit)
+
+			if lastVisit.ID != 0 && !lastVisit.Leave {
+				location.Current--
+				isLeave = true
+			} else {
+				location.Current++
+				isLeave = false
+			}
+		}
 	}
 
 	visit := model.TcpassVisit{
 		DepartmentEmployeeID: departmentEmployee.ID,
 		LocationID:           location.ID,
 		UUID:                 uuid,
+		Leave:                isLeave,
 	}
 
 	db.Create(&visit)
+
+	if location.ID != 0 && location.Capacity > 0 {
+		db.Save(location)
+
+		model.MQTTClient.Publish(
+			fmt.Sprintf("location/%d", location.ID),
+			0,
+			true,
+			strconv.Itoa(int(location.Current)),
+		).Wait()
+
+		logger.WithFields(log.Fields{
+			"service":  "mqtt",
+			"location": location.Location,
+		}).Infoln("發送地點更新人數")
+	}
 
 	db.Where("id = ?", visit.ID).
 		Preload("DepartmentEmployee.Employee").

@@ -8,6 +8,7 @@ type TcpassVisit struct {
 	DepartmentEmployee   DepartmentEmployee `json:"department_employee" gorm:"DepartmentEmployeeID"`
 	Location             Location           `json:"location" gorm:"foreignkey:LocationID"`
 	UUID                 string             `json:"uuid"`
+	Leave                bool               `json:"leave"`
 }
 
 // Mask ...

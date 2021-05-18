@@ -6,6 +6,7 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.6.4
 	github.com/casbin/casbin/v2 v2.30.2 //ct
 	github.com/casbin/gorm-adapter/v2 v2.1.0
+	github.com/eclipse/paho.mqtt.golang v1.3.4
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-redis/redis/v8 v8.8.2
 	github.com/go-resty/resty/v2 v2.6.0

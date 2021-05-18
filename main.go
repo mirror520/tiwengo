@@ -8,6 +8,7 @@ import (
 	jwt "github.com/appleboy/gin-jwt/v2"
 	casbin "github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v2"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/jinzhu/gorm"
@@ -36,7 +37,7 @@ func connDB() *gorm.DB {
 
 	db, err := gorm.Open("mysql", dbArgs)
 	if err != nil {
-		log.WithFields(log.Fields{"db": "mysql"}).
+		log.WithFields(log.Fields{"service": "mysql"}).
 			Fatalln(err.Error())
 	}
 
@@ -54,8 +55,40 @@ func connRedis(ctx context.Context) *redis.Client {
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		log.WithFields(log.Fields{"db": "redis"}).
+		log.WithFields(log.Fields{"service": "redis"}).
 			Fatalln(err.Error())
+	}
+
+	return client
+}
+
+func connMQTT() mqtt.Client {
+	options := mqtt.NewClientOptions().
+		SetUsername(fmt.Sprintf("mqtt:%s", environment.MQTTUsername)).
+		SetPassword(environment.MQTTPassword).
+		SetClientID("tiwengo_admin").
+		AddBroker(fmt.Sprintf("tcp://%s:%d", environment.MQTTBroker, 1883))
+
+	options.OnConnect = func(client mqtt.Client) {
+		log.WithFields(log.Fields{"service": "mqtt"}).
+			Infoln("CONNECTED")
+	}
+
+	options.OnConnectionLost = func(client mqtt.Client, err error) {
+		log.WithFields(log.Fields{"service": "mqtt"}).
+			Errorln(err.Error())
+	}
+
+	options.OnReconnecting = func(client mqtt.Client, options *mqtt.ClientOptions) {
+		log.WithFields(log.Fields{"service": "mqtt"}).
+			Infoln("RECONNECTING")
+	}
+
+	client := mqtt.NewClient(options)
+
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"service": "mqtt"}).
+			Fatalln(token.Error())
 	}
 
 	return client
@@ -117,10 +150,12 @@ func internalRouter() *gin.Engine {
 func main() {
 	model.DB = connDB()
 	model.RedisClient = connRedis(model.RedisContext)
+	model.MQTTClient = connMQTT()
 	model.Enforcer = loadCasbinEnforcer(model.DB)
 
 	defer model.DB.Close()
 	defer model.RedisClient.Close()
+	defer model.MQTTClient.Disconnect(250)
 
 	go internalRouter().Run(":9000")
 	externalRouter().Run(":6080")

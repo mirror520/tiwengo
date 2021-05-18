@@ -6,6 +6,7 @@ type Visit struct {
 	GuestUserID          uint               `json:"-"`
 	DepartmentEmployeeID uint               `json:"-"`
 	LocationID           uint               `json:"location_id"`
+	Leave                bool               `json:"leave"`
 	Guest                User               `json:"guest" gorm:"foreignkey:GuestUserID"`
 	DepartmentEmployee   DepartmentEmployee `json:"department_employee" gorm:"DepartmentEmployeeID"`
 	Location             Location           `json:"location" gorm:"foreignkey:LocationID"`

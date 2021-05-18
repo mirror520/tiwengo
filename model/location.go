@@ -6,6 +6,8 @@ type Location struct {
 	Location   string   `json:"location"`
 	BuildingID uint     `json:"-"`
 	Building   Building `json:"building" gorm:"foreignkey:BuildingID"`
+	Capacity   uint     `json:"capacity" gorm:"default:0"`
+	Current    uint     `json:"current" gorm:"default:0"`
 }
 
 // Building ...
